@@ -17,6 +17,7 @@ import { AMENITIES, AMENITY_IDS } from "./amenities.js";
 import { BUILDING_TYPES, applyBuildingType, validateBuildingType } from "./building-types.js";
 import { extractRating, filterByRating, validateRatingOptions } from "./ratings.js";
 import { paginateSearch, validatePaginationOptions, MAX_PAGES } from "./pagination.js";
+import { sortSearchResults, validateSortOptions, SORT_FIELDS } from "./sorting.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
@@ -44,7 +45,7 @@ const VERSION = getVersion();
 // Tool definitions
 const AIRBNB_SEARCH_TOOL: Tool = {
   name: "airbnb_search",
-  description: "Search for Airbnb listings with filters, optional automatic pagination using targetResults/maxPages, and optional active shorter-stay discovery using discoverPartialStays. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price. Check autoPagination for search coverage and continuation when enabled.",
+  description: "Search for Airbnb listings with filters, optional automatic pagination using targetResults/maxPages, optional active shorter-stay discovery using discoverPartialStays, and local sorting using sortBy/sortOrder. Sorting covers only fetched results, not all Airbnb inventory. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price. Check autoPagination for search coverage and continuation when enabled.",
   inputSchema: {
     type: "object",
     properties: {
@@ -154,6 +155,14 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       targetResults: {
         type: "integer", minimum: 1, maximum: 100,
         description: "Opt into automatic pagination: seek this many unique results after filtering. Returns whole pages, so the target may be exceeded. Main search only; shorter-stay discovery runs afterward. Extra pages have a shared 15-second budget. Omit for one page."
+      },
+      sortBy: {
+        type: "string", enum: [...SORT_FIELDS],
+        description: "Sort fetched results locally after pagination and partial-stay discovery. recommended (default) preserves existing order. nightly_price uses average quoted total per night; total_price compares only identical quoted dates. Price sorts keep currencies separate. rating, review_count and nights_covered default descending; price defaults ascending. Missing values go last. nights_covered requires dates. Does not fetch additional pages or globally sort Airbnb inventory."
+      },
+      sortOrder: {
+        type: "string", enum: ["asc", "desc"],
+        description: "Override the sort direction. Requires sortBy other than recommended. Price groups retain first-appearance order regardless of direction."
       },
       maxPages: {
         type: "integer", minimum: 1, maximum: MAX_PAGES, default: 3,
@@ -501,7 +510,7 @@ async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
 
 // API handlers
 async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number; includePartialStays?: boolean }): Promise<any> {
-  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); validatePaginationOptions(params); }
+  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); validatePaginationOptions(params); validateSortOptions(params); }
   catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
@@ -811,6 +820,8 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
         return page;
       });
     }
+
+    if (!prepared) staysSearchResults = { ...staysSearchResults, ...sortSearchResults(staysSearchResults.searchResults, params) };
 
     return {
       content: [{

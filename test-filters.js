@@ -160,6 +160,16 @@ test('automatic pagination validates options through MCP before searching', asyn
   }
 });
 
+test('sorting schema and validation are exposed through MCP before searching', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
+  assert.deepEqual(schema.properties.sortBy.enum, ['recommended', 'nightly_price', 'total_price', 'rating', 'review_count', 'nights_covered']);
+  assert.deepEqual(schema.properties.sortOrder.enum, ['asc', 'desc']);
+  for (const args of [{ sortBy: 'price' }, { sortBy: null }, { sortOrder: 'asc' }, { sortBy: 'rating', sortOrder: 'up' }, { sortBy: 'nights_covered' }]) {
+    await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', ...args } }), error => error.code === -32602);
+  }
+});
+
 test('currency validates its input through MCP', async () => {
   const { tools } = await client.listTools();
   const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;

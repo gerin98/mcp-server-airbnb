@@ -196,6 +196,8 @@ Search for Airbnb listings with comprehensive filtering options.
 - `cursor` (optional): Pagination cursor for browsing results
 - `targetResults` (optional): Enable automatic pagination to seek 1–100 unique matches after filtering. Omit for the existing single-page behavior.
 - `maxPages` (optional): Maximum main-search pages, including the first (default 3, maximum 5). Requires `targetResults`.
+- `sortBy` (optional): `recommended` (default), `nightly_price`, `total_price`, `rating`, `review_count`, or `nights_covered`. Sorts only fetched results, after pagination and shorter-stay discovery.
+- `sortOrder` (optional): `asc` or `desc`. Requires an explicit `sortBy` other than `recommended`. Defaults to ascending for prices and descending for rating, review count, and nights covered.
 - `propertyType` (optional): Filter by room type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`. The parameter name is retained for compatibility; it does not filter building types such as house or apartment. Omit for any room type; unsupported values are rejected.
 - `buildingType` (optional): Choose one of `house`, `apartment`, `guesthouse`, `hotel`, `cabin`, or `villa`. This is independent of the room-type filter; omit for any building type.
 - `minRating` (optional): Minimum listing rating out of 5, such as `4.5`. Accepts numbers from 0 to 5; omit or use 0 for no minimum.
@@ -212,6 +214,7 @@ Search for Airbnb listings with comprehensive filtering options.
 - `availability` describing how each result's quoted dates compare with your request
 - `availabilityFilter.applied`, `availabilityFilter.excludedResults`, and `availabilityFilter.partialStayResults`, reporting date filtering and how many results are excluded or partial stays
 - `ratingFilter`, reporting the thresholds, examined/excluded row counts, missing-value exclusions and which fetched pages were filtered
+- `sorting`, reporting the selected order, fetched-result scope, price comparison groups, and the number of results with missing or unusable sort values
 
 For listings rated at least 4.5 stars with at least 10 reviews:
 
@@ -258,7 +261,7 @@ Automatic pagination preserves the original location bounds, dates, guests and
 filters on each request. It counts unique listing/date/currency options after
 date and rating filtering, continuing past empty or duplicate-only pages.
 Complete fetched pages are returned, so results may exceed the target. Provider
-order is preserved; this does not add sorting.
+order is preserved unless an explicit `sortBy` is supplied.
 
 `autoPagination` reports `pagesFetched`, `pagesAttempted`, `returnedResults`,
 `duplicatesRemoved`, `targetReached`, `stopReason`, `nextCursor` and per-page
@@ -280,6 +283,50 @@ adds options under its existing limits, fetching only the first page of each
 date window. `autoPagination` counts cover the main search, while top-level
 rating counts include all successful main and shorter-stay pages. Disable
 partial-stay discovery when resuming with a cursor.
+
+To fetch up to three pages and then show the lowest average nightly prices first:
+
+```json
+{
+  "location": "Boston, MA",
+  "checkin": "2027-01-15",
+  "checkout": "2027-01-19",
+  "currency": "USD",
+  "targetResults": 40,
+  "maxPages": 3,
+  "sortBy": "nightly_price",
+  "sortOrder": "asc"
+}
+```
+
+Sorting is local to the final fetched results, after all filtering, pagination,
+deduplication and shorter-stay discovery. It neither requests a native Airbnb
+sort nor fetches additional pages. The target and page limits are satisfied
+before sorting, so these are the cheapest or highest-rated **fetched options**,
+not necessarily the best across Airbnb. Pagination cursors still follow Airbnb's
+original order; resuming sorts the newly fetched batch independently.
+
+| `sortBy` | Value compared | Default direction |
+| --- | --- | --- |
+| `recommended` | Existing order, including full-stay/coverage priority during partial discovery | Unchanged |
+| `nightly_price` | `pricing.averageNightlyTotal` (quoted stay total divided by nights) | Ascending |
+| `total_price` | `pricing.stayTotal`, within identical quoted dates and currency | Ascending |
+| `rating` | Numeric `rating` | Descending |
+| `review_count` | Numeric `reviewCount` | Descending |
+| `nights_covered` | `availability.coveredRequestedNights`; requires check-in and checkout | Descending |
+
+Missing or unusable values always go last, regardless of direction. Ties retain
+the prior order. Explicit sorting overrides the default full-stay priority;
+partial stays retain their date and coverage labels.
+
+Price sorting keeps currencies in separate groups without conversion. Total
+prices are also grouped by the exact quoted dates so different stays are not
+ranked against each other. Groups retain their first-appearance order, and the
+selected direction applies within each group. `sorting.groups` reports each
+group's currency, dates (for totals), and count. Unknown currencies and mismatched
+price dates are unranked; total sorting also requires known dates consistent with the quoted night count.
+Nightly sorting never falls back to a base or displayed rate. Quoted amounts may
+be approximate and differ in tax/fee inclusion; inspect each result's `pricing`.
 
 Building types can be combined with room types, dates, guests, amenities, price
 limits and partial-stay discovery. For example:
@@ -626,6 +673,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-building-types.js` — current Airbnb filter fixtures, room/building separation, partial-stay filter propagation and optional live checks for all six building types
 - `test-ratings.js` — numeric rating extraction, exact review counts, independent/inclusive thresholds, unknown values, partial-stay filtering and pagination; optional live checks
 - `test-pagination.js` — automatic pagination, bounded requests, deduplication, filter preservation, cursor continuation, empty pages, partial failures and interaction with shorter stays; optional live checks
+- `test-sorting.js` — sort directions, stable ties, missing values, price/date/currency groups, combined pagination and partial stays; optional live checks
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -662,6 +710,8 @@ AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live building" test-bui
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live rating" test-ratings.js
 # Verify automatic pagination, continuation and empty filtered pages:
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live automatic" test-pagination.js
+# Verify sorting across fetched pages and shorter-stay searches:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live sorting" test-sorting.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters
