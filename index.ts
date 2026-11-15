@@ -17,6 +17,7 @@ import { AMENITIES, AMENITY_IDS } from "./amenities.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
+import { fetchDatedBooking } from "./booking.js";
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -133,7 +134,7 @@ const AIRBNB_SEARCH_TOOL: Tool = {
 
 const AIRBNB_LISTING_DETAILS_TOOL: Tool = {
   name: "airbnb_listing_details",
-  description: "Get public details from an Airbnb listing URL or ID: description, rooms, amenities, host, photos, ratings, location, rules and safety information. Show unavailable amenities and missing information clearly. Price and availability are only known when embedded in the page; URL dates alone do not verify them. Provide a direct listing link.",
+  description: "Get public details from an Airbnb listing URL or ID: description, rooms, amenities, host, photos, ratings, location, rules and safety information. With checkin and checkout, also check live availability and a dated quote for the supplied guests, including nightly/total prices and any cancellation summary. Clearly distinguish checked, unavailable and failed/unknown quotes; do not treat the quote as a reservation. Provide a direct listing link.",
   inputSchema: {
     type: "object",
     properties: {
@@ -923,6 +924,12 @@ async function handleAirbnbListingDetails(params: any) {
         }],
         isError: true
       };
+    }
+
+    if (listing && checkin && checkout) {
+      const datedBooking = await fetchDatedBooking(html, context, path => ignoreRobotsText || isPathAllowed(path));
+      listing = { ...listing, booking: { ...listing.booking, ...datedBooking } };
+      listing.coverage.note = "Public listing details plus a dated booking lookup. Check booking.quoteStatus and datesVerified before quoting availability. Full review history, calendar and cancellation terms are not included.";
     }
 
     return {

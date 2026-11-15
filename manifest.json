@@ -46,7 +46,7 @@
     },
     {
       "name": "airbnb_listing_details",
-      "description": "Get public details from an Airbnb listing URL or ID, including description, rooms, amenities, host, photos, ratings, rules, safety and location."
+      "description": "Get public details from an Airbnb listing URL or ID, plus live availability, a dated price quote and any cancellation summary when check-in and check-out dates are supplied."
     },
     {
       "name": "airbnb_list_amenities",

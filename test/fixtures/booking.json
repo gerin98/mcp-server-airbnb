@@ -1,0 +1,197 @@
+{
+  "source": "Public Airbnb StaysPdpBookItQuery responses captured 2026-11-15. Trace IDs and logging metadata removed.",
+  "cases": {
+    "available": {
+      "data": {
+        "node": {
+          "__typename": "DemandStayListing",
+          "pdpPresentation": {
+            "__typename": "DemandStayListingPdpPresentationContainer",
+            "bookIt": {
+              "__typename": "StandardBookIt",
+              "structuredDisplayPrice": {
+                "__typename": "StructuredDisplayPrice",
+                "primaryLine": {
+                  "__typename": "DiscountedDisplayPriceLine",
+                  "accessibilityLabel": "$908 for 3 nights, originally $1,082",
+                  "discountedPrice": "$908",
+                  "originalPrice": "$1,082",
+                  "qualifier": "for 3 nights",
+                  "concatQualifierLeft": false,
+                  "trailing": null
+                },
+                "secondaryLine": null,
+                "explanationData": {
+                  "__typename": "DisplayPriceExplanationData",
+                  "title": "Price details",
+                  "subtitle": null,
+                  "priceDetails": [
+                    {
+                      "__typename": "DisplayPriceExplanationLineGroup",
+                      "items": [
+                        {
+                          "__typename": "DiscountedExplanationLineItem",
+                          "description": "3 nights x $302.64",
+                          "priceString": "$907.93",
+                          "originalPriceString": "$1,081.93",
+                          "explanationData": null
+                        }
+                      ],
+                      "renderBorderTop": false,
+                      "collapsable": null
+                    },
+                    {
+                      "__typename": "DisplayPriceExplanationDisclaimer",
+                      "content": "Pay $0 today with no extra fees."
+                    },
+                    {
+                      "__typename": "DisplayPriceExplanationDisclaimer",
+                      "content": "Celeste recently lowered the price for these dates (from the average rate for the past 60 nights)."
+                    }
+                  ]
+                },
+                "explanationDataDisplayPosition": "PRIMARY_LINE",
+                "displayPriceStyle": "TOTAL_ONLY"
+              },
+              "availability": {
+                "__typename": "BookItAvailability",
+                "isAvailable": true,
+                "canInstantBook": true,
+                "unavailabilityMessage": null,
+                "eligibility": null,
+                "unavailabilityReason": null
+              },
+              "productItemDetail": {
+                "__typename": "BasicPriceDetail",
+                "explanationData": {
+                  "__typename": "DisplayPriceExplanationData",
+                  "title": "Price details",
+                  "priceDetails": [
+                    {
+                      "__typename": "DisplayPriceExplanationLineGroup",
+                      "items": [
+                        {
+                          "__typename": "DefaultExplanationLineItem",
+                          "description": "3 nights x $302.64",
+                          "priceString": "$907.93",
+                          "explanationData": null
+                        }
+                      ],
+                      "renderBorderTop": false,
+                      "collapsable": false
+                    },
+                    {
+                      "__typename": "DisplayPriceExplanationLineGroup",
+                      "items": [
+                        {
+                          "__typename": "HighlightExplanationLineItem",
+                          "description": "Price after discount",
+                          "priceString": "$907.93",
+                          "explanationData": null,
+                          "originalPriceString": null,
+                          "accessibilityLabel": null
+                        }
+                      ],
+                      "renderBorderTop": false,
+                      "collapsable": null
+                    },
+                    {
+                      "__typename": "DisplayPriceExplanationDisclaimer",
+                      "content": "Celeste recently lowered the price for these dates (from the average rate for the past 60 nights)."
+                    }
+                  ]
+                }
+              },
+              "selectedDates": "Feb 8\u2009\u2013\u200911",
+              "availabilityDetailsKicker": "Free cancellation before January 9",
+              "integratedTip": {
+                "__typename": "SimpleMerchandisingTip",
+                "title": "$0 today \u00b7 Free cancellation before <b>January 9</b>",
+                "type": "PAY_ZERO_UPFRONT",
+                "messageType": "LISTING_PAY_LESS_UPFRONT_EDUCATION"
+              },
+              "announcement": {
+                "__typename": "SimpleMerchandisingTip",
+                "title": "Prices include all fees",
+                "type": "PRICE_TRANSPARENCY_FEE_INCLUSIVE",
+                "messageType": "PRICE_TRANSPARENCY_FEE_INCLUSIVE"
+              },
+              "priceDetailTips": null,
+              "priceMerchandisingMessage": null
+            },
+            "merchandisingSuite": {
+              "__typename": "PDPMerchandisingSuite",
+              "priceValueTips": null
+            }
+          }
+        }
+      }
+    },
+    "unavailable": {
+      "data": {
+        "node": {
+          "__typename": "DemandStayListing",
+          "pdpPresentation": {
+            "__typename": "DemandStayListingPdpPresentationContainer",
+            "bookIt": {
+              "__typename": "StandardBookIt",
+              "structuredDisplayPrice": null,
+              "availability": {
+                "__typename": "BookItAvailability",
+                "isAvailable": false,
+                "canInstantBook": false,
+                "unavailabilityMessage": "Those dates are not available",
+                "eligibility": null,
+                "unavailabilityReason": "DATE"
+              },
+              "productItemDetail": null,
+              "selectedDates": "Jan 15\u2009\u2013\u200918",
+              "availabilityDetailsKicker": null,
+              "integratedTip": null,
+              "announcement": null,
+              "priceDetailTips": null,
+              "priceMerchandisingMessage": null
+            },
+            "merchandisingSuite": {
+              "__typename": "PDPMerchandisingSuite",
+              "priceValueTips": null
+            }
+          }
+        }
+      }
+    },
+    "minimumStay": {
+      "data": {
+        "node": {
+          "__typename": "DemandStayListing",
+          "pdpPresentation": {
+            "__typename": "DemandStayListingPdpPresentationContainer",
+            "bookIt": {
+              "__typename": "StandardBookIt",
+              "structuredDisplayPrice": null,
+              "availability": {
+                "__typename": "BookItAvailability",
+                "isAvailable": false,
+                "canInstantBook": false,
+                "unavailabilityMessage": "Minimum stay is 10 nights",
+                "eligibility": null,
+                "unavailabilityReason": "DATE"
+              },
+              "productItemDetail": null,
+              "selectedDates": "Jan 15\u2009\u2013\u200918",
+              "availabilityDetailsKicker": null,
+              "integratedTip": null,
+              "announcement": null,
+              "priceDetailTips": null,
+              "priceMerchandisingMessage": null
+            },
+            "merchandisingSuite": {
+              "__typename": "PDPMerchandisingSuite",
+              "priceValueTips": null
+            }
+          }
+        }
+      }
+    }
+  }
+}

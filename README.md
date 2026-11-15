@@ -346,21 +346,38 @@ Explicit arguments override those URL values. Tracking parameters are discarded.
   listing ratings and category scores, photos, house rules, safety information,
   accessibility features, guest requirements and location. Location retains
   `isExactLocation` when supplied; approximate coordinates are not an exact address.
-- `listing.booking`: requested dates, resolved/requested currency, any embedded
-  pricing and cancellation policy, and availability status. URL dates alone do
-  **not** verify price or availability. Airbnb often loads these separately in
-  the browser, even when dates were supplied. In that case `pricing` and
-  `available` are `null`, `pricingStatus` is `not_provided`, and
-  `availabilityStatus` is `unknown`. A page availability flag is not confirmation
-  for the requested dates; `datesVerified` remains false. Embedded prices retain
-  the structured nightly/total distinctions used by search without attributing
-  them to unverified URL dates.
+- `listing.booking`: when dates are supplied, a separate live quote lookup for
+  that listing, exact date range, and all guest counts. It returns the availability
+  result, pricing, any cancellation summary, and the time checked. Without dates,
+  `quoteStatus` is `not_requested` and only embedded page information is returned.
 - `listing.coverage`: missing fields and explicit scope. This returns information
-  embedded in the public page, not the full review history or availability calendar.
+  from the public page and dated lookup, not the full review history or availability calendar.
 - `details`: the existing section array, retained for compatibility, including
   category-keyed `seeAllAmenitiesGroups` and unavailable-amenity labels.
 
 Use `airbnb_search` for dated search quotes and clearly labeled partial stays.
+
+**Dated booking results:**
+
+| Field | Meaning |
+| --- | --- |
+| `quoteStatus` | `checked` for a supported response with a matching date label and price night count (when present); `error` or `blocked` if the lookup could not be verified. |
+| `available`, `availabilityStatus` | Whether this exact stay and guest combination is available. An unavailable stay can reflect a minimum-stay restriction; it does not mean every night is booked. |
+| `datesVerified`, `verificationSource` | A successful dated request, with the returned date label checked against the requested dates. This is not a reservation. |
+| `message`, `unavailabilityReason` | Airbnb's explanation, such as unavailable dates or a minimum stay of 10 nights. |
+| `pricing.stayTotal`, `stayTotalSource` | The explicit breakdown total when available, otherwise the displayed total with its approximation flag. The total is never calculated by multiplying rounded nightly rates. |
+| `pricing.quotedNightlyRate`, `averageNightlyTotal` | Airbnb's quoted nightly figure and the total divided by the quoted nights. `baseNightlyRate` stays null because the quoted rate can include fees. |
+| `pricing.feesIncluded`, `feesItemized`, `taxesIncluded`, `taxesItemized` | Explicit inclusion and itemization signals. Empty fee/tax arrays do not mean zero fees/taxes. |
+| `currency`, `currencySource` | The explicit currency passed to the quote endpoint (`quote_request`). The response does not independently echo an ISO currency code. Defaults to the page's resolved currency when omitted. |
+| `cancellationPolicy` | The returned cancellation summary, with `fullTermsAvailable: false`. Full refund terms, deadline times and time zones must be confirmed on Airbnb. |
+| `checkedAt`, `guests` | When the live lookup ran and the guest counts it used. Quotes are not cached. |
+
+If the extra lookup fails, static listing details are still returned. `available`
+and `pricing` remain null, `availabilityStatus` is `unknown`, and `datesVerified`
+is false. A request failure is never reported as an unavailable stay. The lookup
+respects the same robots.txt setting as the listing request. It discovers the
+current operation from Airbnb's public versioned page asset; unsupported page or
+response changes produce an explicit lookup error instead of a guessed quote.
 
 ## Technical Details
 
@@ -440,13 +457,14 @@ npm run test:offline
 npm run test:live
 ```
 
-`npm test` drives the built server over stdio:
+The test suites cover fixtures and the built server over stdio:
 
 - `test-filters.js` — offline amenity catalog discovery, consistency with search and the bundle manifest, and filter validation; optional live search checks
 - `test-pricing.js` — captured price-response fixtures and edge cases covering currency, rounding, nightly versus total prices, fees, discounts, dates, and unknown tax information
 - `test-availability.js` — exact and flexible date comparisons, unknown dates, window boundaries, year changes, and daylight-saving boundaries
 - `test-listing.js` — listing URL validation, page extraction fixtures and MCP validation; optional broader live listing checks
-- `test-live.js` — one public listing URL smoke test over MCP, run by `npm run test:live`
+- `test-booking.js` — dated quote fixtures, exact totals, cancellation summaries, request context, date matching, robots rules and failure handling
+- `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
 
@@ -455,9 +473,11 @@ The extension and amenities suites hit `airbnb.com` and the geocoders over the n
 The [Tests workflow](.github/workflows/tests.yml) runs on pull requests, pushes to
 `main`, and manual dispatch. It builds and runs the offline tests on Node 22, then
 runs a separate live smoke-test job with exactly one listing tool call. Neither
-job needs secrets. The smoke test uses the robots.txt testing override and an
-undated listing URL, so it does not depend on future dates, prices, or availability.
-It checks that the MCP response contains a title, description, amenities and photos.
+job needs secrets. The smoke test uses the robots.txt testing override and a
+three-night stay starting 60 days ahead. It checks listing details and a verified
+dated availability response; either available or unavailable is valid. It does
+not require any particular price. The single tool call fetches the listing page,
+its public quote-operation asset and the dated quote response.
 Live failures fail their job and expose server diagnostics; Airbnb blocking CI
 traffic, a removed listing, or page changes can cause that job to fail even when
 the offline tests pass. The test does not retry or silently skip those failures.

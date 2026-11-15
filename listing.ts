@@ -46,7 +46,8 @@ export function normalizeListingInput(params: Record<string, any>) {
   if (checkout) listingUrl.searchParams.set("check_out", checkout);
   if (currency) listingUrl.searchParams.set("currency", currency);
   for (const [key, count] of Object.entries(guests)) listingUrl.searchParams.set(key, String(count));
-  return { id, listingUrl, checkin, checkout, currency, ...guests };
+  return { id, listingUrl, checkin, checkout, currency,
+    adults: guests.adults, children: guests.children, infants: guests.infants, pets: guests.pets };
 }
 
 export function listingSections(clientData: any): any[] {
@@ -133,6 +134,8 @@ export function extractListing(clientData: any, html: string, context: ReturnTyp
     guestRequirements: select(pdp?.pdpGuestPickerConfig, { guestMaxCount: true, childrenAllowed: true, infantsAllowed: true, childrenAndInfantsWarning: true }),
     photos: [...photos.values()],
     booking: {
+      source: "public_listing_page",
+      quoteStatus: "not_requested",
       requestedCheckin: context.checkin ?? null, requestedCheckout: context.checkout ?? null,
       currency, requestedCurrency: context.currency ?? null,
       availabilityStatus: availability === null ? "unknown" : availability ? "available" : "unavailable",
