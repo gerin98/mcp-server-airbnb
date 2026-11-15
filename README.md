@@ -434,6 +434,10 @@ npm run watch
 ```bash
 # Build, then run all suites
 npm test
+# Build, then run only offline tests (live cases are always skipped)
+npm run test:offline
+# Build, then make one live listing request over MCP
+npm run test:live
 ```
 
 `npm test` drives the built server over stdio:
@@ -441,10 +445,22 @@ npm test
 - `test-filters.js` — offline amenity catalog discovery, consistency with search and the bundle manifest, and filter validation; optional live search checks
 - `test-pricing.js` — captured price-response fixtures and edge cases covering currency, rounding, nightly versus total prices, fees, discounts, dates, and unknown tax information
 - `test-availability.js` — exact and flexible date comparisons, unknown dates, window boundaries, year changes, and daylight-saving boundaries
+- `test-listing.js` — listing URL validation, page extraction fixtures and MCP validation; optional broader live listing checks
+- `test-live.js` — one public listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
 
-The extension and amenities suites hit `airbnb.com` and the geocoders over the network, so they need connectivity and can fail if Airbnb changes its page structure — that's the point of them, but it also means they aren't suitable as an unattended CI gate.
+The extension and amenities suites hit `airbnb.com` and the geocoders over the network. These broader live suites remain outside CI.
+
+The [Tests workflow](.github/workflows/tests.yml) runs on pull requests, pushes to
+`main`, and manual dispatch. It builds and runs the offline tests on Node 22, then
+runs a separate live smoke-test job with exactly one listing tool call. Neither
+job needs secrets. The smoke test uses the robots.txt testing override and an
+undated listing URL, so it does not depend on future dates, prices, or availability.
+It checks that the MCP response contains a title, description, amenities and photos.
+Live failures fail their job and expose server diagnostics; Airbnb blocking CI
+traffic, a removed listing, or page changes can cause that job to fail even when
+the offline tests pass. The test does not retry or silently skip those failures.
 
 To run just the search-filter tests:
 
