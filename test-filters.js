@@ -138,6 +138,18 @@ test('buildingType is a separate optional enum and validates through MCP', async
   }
 });
 
+test('minimum rating and review count validate through MCP before searching', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
+  assert.equal(schema.properties.minRating.minimum, 0);
+  assert.equal(schema.properties.minRating.maximum, 5);
+  assert.equal(schema.properties.minReviewCount.type, 'integer');
+  for (const [key, values] of Object.entries({ minRating: [-1, 5.1, '4.5', null, true, []], minReviewCount: [-1, 1.5, '10', null, true, [], Number.MAX_SAFE_INTEGER + 1] })) {
+    for (const value of values) await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', [key]: value } }),
+      error => error.code === -32602 && error.message.includes(key));
+  }
+});
+
 test('currency validates its input through MCP', async () => {
   const { tools } = await client.listTools();
   const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;

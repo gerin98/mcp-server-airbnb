@@ -15,6 +15,7 @@ import { cleanObject, flattenArraysInObject, pickBySchema, diagnoseJsonPath, fin
 import robotsParser from "robots-parser";
 import { AMENITIES, AMENITY_IDS } from "./amenities.js";
 import { BUILDING_TYPES, applyBuildingType, validateBuildingType } from "./building-types.js";
+import { extractRating, filterByRating, validateRatingOptions } from "./ratings.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
@@ -133,6 +134,17 @@ const AIRBNB_SEARCH_TOOL: Tool = {
         type: "array",
         items: { type: "string", enum: Object.keys(AMENITY_IDS) },
         description: "Required amenities, e.g. ['wifi', 'kitchen', 'free_parking']. Use airbnb_list_amenities for labels and descriptions. All selected amenities are requested together. Omit or use [] for any; duplicates are ignored."
+      },
+      minRating: {
+        type: "number",
+        minimum: 0,
+        maximum: 5,
+        description: "Minimum listing rating out of 5, e.g. 4.5. Applied locally to each fetched result page, including partial stays. Unknown ratings are excluded when positive. Omit or use 0 for no minimum; use the pagination cursor to check further pages."
+      },
+      minReviewCount: {
+        type: "integer",
+        minimum: 0,
+        description: "Minimum number of listing reviews, e.g. 10. Applied locally to each fetched result page, including partial stays. Unknown counts are excluded when positive. Omit or use 0 for no minimum."
       },
       cursor: {
         type: "string",
@@ -480,7 +492,7 @@ async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
 
 // API handlers
 async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number }): Promise<any> {
-  try { validatePartialOptions(params); validateBuildingType(params.buildingType); }
+  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); }
   catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
@@ -649,6 +661,7 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
       },
     },
     avgRatingA11yLabel: true,
+    avgRatingLocalized: true,
     listingParamOverrides: true,
     structuredDisplayPrice: {
       primaryLine: {
@@ -703,6 +716,7 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
       const pricing = results.searchResults.map((result: any) => extractPricing(result, {
         currency: resolvedCurrency, requestedCurrency: currency, checkin, checkout
       }));
+      const ratings = results.searchResults.map((result: any) => extractRating(result));
       cleanObject(results);
       
       const searchResults = results.searchResults
@@ -720,10 +734,17 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
               listingUrl.searchParams.set(name, count.toString());
             }
             if (quote.currency) listingUrl.searchParams.set("currency", quote.currency);
-            return {id, url: listingUrl.toString(), ...result, pricing: quote, availability }
+            return {id, url: listingUrl.toString(), ...result, ...ratings[index], pricing: quote, availability }
           });
+      const available = filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || !!prepared);
+      const rated = filterByRating(available.searchResults as any[], params);
       staysSearchResults = {
-        ...filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || !!prepared),
+        ...available,
+        ...rated,
+        availabilityFilter: {
+          ...available.availabilityFilter,
+          partialStayResults: rated.searchResults.filter((row: any) => row.availability.matchType === "partial_stay").length,
+        },
         paginationInfo: results.paginationInfo,
         retrievedAt: new Date().toISOString()
       }

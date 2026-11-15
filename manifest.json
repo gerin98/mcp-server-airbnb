@@ -42,7 +42,7 @@
   "tools": [
     {
       "name": "airbnb_search",
-      "description": "Search for Airbnb listings with separate room and building types, dates, guests and other filters. Optional partial-stay discovery adds clearly labeled shorter stays alongside full-stay results."
+      "description": "Search for Airbnb listings with room/building types, dates and guests, plus local minimum-rating and review-count filters. Optional partial-stay discovery adds clearly labeled shorter stays."
     },
     {
       "name": "airbnb_listing_details",

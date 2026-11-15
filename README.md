@@ -196,16 +196,49 @@ Search for Airbnb listings with comprehensive filtering options.
 - `cursor` (optional): Pagination cursor for browsing results
 - `propertyType` (optional): Filter by room type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`. The parameter name is retained for compatibility; it does not filter building types such as house or apartment. Omit for any room type; unsupported values are rejected.
 - `buildingType` (optional): Choose one of `house`, `apartment`, `guesthouse`, `hotel`, `cabin`, or `villa`. This is independent of the room-type filter; omit for any building type.
+- `minRating` (optional): Minimum listing rating out of 5, such as `4.5`. Accepts numbers from 0 to 5; omit or use 0 for no minimum.
+- `minReviewCount` (optional): Minimum number of listing reviews, such as `10`. Must be a nonnegative whole number; omit or use 0 for no minimum.
 - `ignoreRobotsText` (optional): Override robots.txt for this request
 
 **Returns:**
 - Search results with property details, pricing, and direct links
 - Airbnb's `title` for each result, such as “Cabin in Rhododendron” (some hotel results use the hotel name)
+- Numeric `rating` and integer `reviewCount` on every result, or null when unknown. The original `avgRatingA11yLabel` and `avgRatingLocalized` strings are retained when present.
 - Pagination information for browsing additional results
 - Search URL for reference
 - Retrieval timestamp (`retrievedAt`) and structured `pricing` for each listing
 - `availability` describing how each result's quoted dates compare with your request
 - `availabilityFilter.applied`, `availabilityFilter.excludedResults`, and `availabilityFilter.partialStayResults`, reporting date filtering and how many results are excluded or partial stays
+- `ratingFilter`, reporting the thresholds, examined/excluded row counts, missing-value exclusions and which fetched pages were filtered
+
+For listings rated at least 4.5 stars with at least 10 reviews:
+
+```json
+{
+  "location": "Boston, MA",
+  "minRating": 4.5,
+  "minReviewCount": 10
+}
+```
+
+Rating thresholds are **local filters on fetched pages**, not native Airbnb
+search parameters. They apply after date filtering and before partial-stay
+deduplication or result limits. Both thresholds are inclusive. A missing rating
+fails a positive `minRating`; a missing review count fails a positive
+`minReviewCount`. Unknown values remain in results when their threshold is off.
+“New” does not imply zero reviews. Approximate counts such as “1K” are not treated
+as exact; the parser prefers Airbnb's English accessibility label, which can
+provide the full count even when the display abbreviates it.
+
+Pagination cursors are preserved even if every row on a page is excluded. Repeat
+the same thresholds with a cursor to inspect later pages; no extra pages are
+automatically fetched for these filters, and the returned Airbnb `searchUrl`
+does not encode them. An empty filtered page does not mean no matching listings
+exist. With partial-stay discovery enabled, the same thresholds apply to every
+extra search. The top-level `ratingFilter` aggregates examined/excluded rows
+across all successful pages before deduplication; individual window reports
+also retain their own counts. Missing-rating and missing-count exclusions may
+overlap and should not be added together.
 
 Building types can be combined with room types, dates, guests, amenities, price
 limits and partial-stay discovery. For example:
@@ -550,6 +583,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-booking.js` — dated quote fixtures, exact totals, cancellation summaries, request context, date matching, robots rules and failure handling
 - `test-partial-stays.js` — bounded date-window discovery, filter preservation, original-date labels, deduplication, partial failures and coverage; optional live toggle check
 - `test-building-types.js` — current Airbnb filter fixtures, room/building separation, partial-stay filter propagation and optional live checks for all six building types
+- `test-ratings.js` — numeric rating extraction, exact review counts, independent/inclusive thresholds, unknown values, partial-stay filtering and pagination; optional live checks
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -582,6 +616,8 @@ AIRBNB_LIVE_TESTS=true npm run test:filters
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live partial" test-partial-stays.js
 # Verify building types and room types together against Airbnb:
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live building" test-building-types.js
+# Verify ratings on full/partial results and pagination on an empty filtered page:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live rating" test-ratings.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters

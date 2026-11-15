@@ -1,5 +1,6 @@
 import { describeAvailability } from "./availability.js";
 import { dateNights } from "./pricing.js";
+import { combineRatingReports, RatingFilterReport } from "./ratings.js";
 
 export const DEFAULT_PARTIAL_SEARCHES = 6;
 export const MAX_PARTIAL_SEARCHES = 8;
@@ -52,7 +53,7 @@ export function partialSearchUrl(primary: URL, window: { checkin: string; checko
   return url;
 }
 
-type SearchPage = { searchResults: any[]; paginationInfo?: any; availabilityFilter?: any; retrievedAt?: string };
+type SearchPage = { searchResults: any[]; paginationInfo?: any; availabilityFilter?: any; retrievedAt?: string; ratingFilter?: RatingFilterReport };
 type SearchWindow = (url: URL, timeoutMs: number) => Promise<SearchPage>;
 
 export async function discoverPartialStays(
@@ -82,7 +83,7 @@ export async function discoverPartialStays(
       try {
         const page = await search(url, Math.min(remaining, WINDOW_TIMEOUT_MS));
         if (!Array.isArray(page.searchResults)) throw new Error("Search returned no result array");
-        outcomes[index] = { page, report: { ...report, status: "completed", paginationInfo: page.paginationInfo ?? null, retrievedAt: page.retrievedAt ?? null } };
+        outcomes[index] = { page, report: { ...report, status: "completed", paginationInfo: page.paginationInfo ?? null, retrievedAt: page.retrievedAt ?? null, ratingFilter: page.ratingFilter } };
       } catch (error) {
         outcomes[index] = { report: { ...report, status: "failed", error: error instanceof Error ? error.message : "Search failed" } };
       }
@@ -156,6 +157,10 @@ export async function discoverPartialStays(
   return {
     ...primary,
     searchResults,
+    ...(primary.ratingFilter ? { ratingFilter: combineRatingReports([
+      primary.ratingFilter,
+      ...outcomes.flatMap(outcome => outcome.page?.ratingFilter ? [outcome.page.ratingFilter] : []),
+    ]) } : {}),
     availabilityFilter: {
       ...primary.availabilityFilter,
       excludedResultsScope: "primary_search_page",

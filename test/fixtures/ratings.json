@@ -1,0 +1,35 @@
+{
+  "source": "Airbnb public search card rating fields captured 2026-11-15. Only rating labels retained.",
+  "cases": [
+    {
+      "input": {
+        "avgRatingA11yLabel": "4.87 out of 5 average rating,  71 reviews",
+        "avgRatingLocalized": "4.87 (71)"
+      },
+      "expected": {
+        "rating": 4.87,
+        "reviewCount": 71
+      }
+    },
+    {
+      "input": {
+        "avgRatingA11yLabel": "4.86 out of 5 average rating,  518 reviews",
+        "avgRatingLocalized": "4.86 (518)"
+      },
+      "expected": {
+        "rating": 4.86,
+        "reviewCount": 518
+      }
+    },
+    {
+      "input": {
+        "avgRatingA11yLabel": "4.93 out of 5 average rating,  92 reviews",
+        "avgRatingLocalized": "4.93 (92)"
+      },
+      "expected": {
+        "rating": 4.93,
+        "reviewCount": 92
+      }
+    }
+  ]
+}
