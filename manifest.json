@@ -42,7 +42,7 @@
   "tools": [
     {
       "name": "airbnb_search",
-      "description": "Search for Airbnb listings with various filters including location, dates, guests, and price range. Returns paginated results with direct links."
+      "description": "Search for Airbnb listings with location, dates, guests and other filters. Optional partial-stay discovery adds clearly labeled shorter stays alongside full-stay results."
     },
     {
       "name": "airbnb_listing_details",

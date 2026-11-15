@@ -18,6 +18,7 @@ import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
 import { fetchDatedBooking } from "./booking.js";
+import { discoverPartialStays as runPartialStayDiscovery, validatePartialOptions, DEFAULT_PARTIAL_SEARCHES, MAX_PARTIAL_SEARCHES } from "./partial-stays.js";
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -40,7 +41,7 @@ const VERSION = getVersion();
 // Tool definitions
 const AIRBNB_SEARCH_TOOL: Tool = {
   name: "airbnb_search",
-  description: "Search for Airbnb listings with various filters and pagination. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price.",
+  description: "Search for Airbnb listings with filters, pagination, and optional active shorter-stay discovery using discoverPartialStays. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price.",
   inputSchema: {
     type: "object",
     properties: {
@@ -54,7 +55,7 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       },
       checkin: {
         type: "string",
-        description: "Start of the requested stay (YYYY-MM-DD). Supply with checkout to search availability. Partial-stay matches are retained and clearly labeled with the dates and requested nights they cover."
+        description: "Start of the requested stay (YYYY-MM-DD). Supply with checkout to search availability. Enable discoverPartialStays to include clearly labeled partial-stay matches."
       },
       checkout: {
         type: "string",
@@ -64,6 +65,24 @@ const AIRBNB_SEARCH_TOOL: Tool = {
         type: "integer",
         enum: [0, ...Object.keys(FLEXIBLE_DATE_FILTERS).map(Number)],
         description: "Search around check-in and check-out by ±1, ±2, ±3, ±7, or ±14 days. Requires both dates when greater than 0. Omit or use 0 for exact dates. Check each result's availability and pricing for the matched dates."
+      },
+      discoverPartialStays: {
+        type: "boolean",
+        default: false,
+        description: "Toggle partial-stay results (default off). When on, retain Airbnb's suggested partial matches and actively search shorter stays wholly within checkin/checkout. Requires both dates; cannot be combined with cursor. Partial results show the actual dates and nights covered."
+      },
+      minPartialNights: {
+        type: "integer",
+        minimum: 1,
+        default: 2,
+        description: "Minimum nights for actively discovered shorter stays (default 2). Requires discoverPartialStays."
+      },
+      maxPartialSearches: {
+        type: "integer",
+        minimum: 1,
+        maximum: MAX_PARTIAL_SEARCHES,
+        default: DEFAULT_PARTIAL_SEARCHES,
+        description: "Maximum extra date-window searches (default 6, maximum 8). Longest shorter stays are tried first, with a 20-second discovery budget. Check partialStayDiscovery for search coverage. Requires discoverPartialStays."
       },
       adults: {
         type: "number",
@@ -421,7 +440,7 @@ function isPathAllowed(path: string): boolean {
   }
 }
 
-async function fetchWithUserAgent(url: string, timeout: number = 30000) {
+async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   
@@ -436,26 +455,27 @@ async function fetchWithUserAgent(url: string, timeout: number = 30000) {
       signal: controller.signal
     });
     
-    clearTimeout(timeoutId);
-    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    return response;
+    return await response.text();
   } catch (error) {
-    clearTimeout(timeoutId);
     
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`Request timeout after ${timeout}ms`);
     }
     
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
 // API handlers
-async function handleAirbnbSearch(params: any) {
+async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number }): Promise<any> {
+  try { validatePartialOptions(params); }
+  catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
     placeId,
@@ -515,66 +535,69 @@ async function handleAirbnbSearch(params: any) {
   const slug = location
     .replace(/,\s*/g, "--")   // "Paris, France" → "Paris--France"
     .replace(/\s+/g, "-");    // remaining spaces → single dash
-  const searchUrl = new URL(`${BASE_URL}/s/${encodeURIComponent(slug)}/homes`);
-  
-  // Add placeId
-  if (placeId) searchUrl.searchParams.append("place_id", placeId);
-  
-  // Geocode and add bounding box to fix broken server-side geocoding.
-  // Skipped when placeId is supplied (Airbnb's place lookup is reliable for those)
-  // or when DISABLE_GEOCODING=true (user opt-out from third-party calls).
-  if (!placeId && !DISABLE_GEOCODING) {
-    const coords = await geocodeLocation(location);
-    if (coords) {
-      searchUrl.searchParams.append("ne_lat", coords.ne_lat);
-      searchUrl.searchParams.append("ne_lng", coords.ne_lng);
-      searchUrl.searchParams.append("sw_lat", coords.sw_lat);
-      searchUrl.searchParams.append("sw_lng", coords.sw_lng);
-    }
-  }
-  
-  // Add query parameters
-  if (checkin) searchUrl.searchParams.append("checkin", checkin);
-  if (checkout) searchUrl.searchParams.append("checkout", checkout);
-  if (dateFlexibilityDays > 0) searchUrl.searchParams.append("flexible_date_search_filter_type", FLEXIBLE_DATE_FILTERS[dateFlexibilityDays]);
-  if (currency !== undefined) searchUrl.searchParams.append("currency", currency);
-  
-  // Add guests
+  const searchUrl = prepared ? new URL(prepared.url) : new URL(`${BASE_URL}/s/${encodeURIComponent(slug)}/homes`);
+
   const adults_int = parseInt(adults.toString());
   const children_int = parseInt(children.toString());
   const infants_int = parseInt(infants.toString());
   const pets_int = parseInt(pets.toString());
-  
-  const totalGuests = adults_int + children_int;
-  if (totalGuests > 0) {
-    searchUrl.searchParams.append("adults", adults_int.toString());
-    searchUrl.searchParams.append("children", children_int.toString());
-    searchUrl.searchParams.append("infants", infants_int.toString());
-    searchUrl.searchParams.append("pets", pets_int.toString());
-  }
-  
-  // Add price range
-  if (minPrice != null) searchUrl.searchParams.append("price_min", minPrice.toString());
-  if (maxPrice != null) searchUrl.searchParams.append("price_max", maxPrice.toString());
-  if (minPrice != null || maxPrice != null) searchUrl.searchParams.append("price_filter_input_type", "0");
 
-  // Airbnb applies these minimums before pagination; 0 means no restriction.
-  if (minBedrooms !== undefined) searchUrl.searchParams.append("min_bedrooms", minBedrooms.toString());
-  if (minBeds !== undefined) searchUrl.searchParams.append("min_beds", minBeds.toString());
-  if (minBathrooms !== undefined) searchUrl.searchParams.append("min_bathrooms", minBathrooms.toString());
+  if (!prepared) {
+    // Add placeId
+    if (placeId) searchUrl.searchParams.append("place_id", placeId);
 
-  for (const amenity of new Set<string>(amenities ?? [])) {
-    searchUrl.searchParams.append("amenities[]", AMENITY_IDS[amenity]);
-  }
-  
-  // Keep the public parameter name, but send Airbnb's room-type filter.
-  if (propertyType !== undefined) {
-    searchUrl.searchParams.append("room_types[]", ROOM_TYPES[propertyType]);
-  }
+    // Geocode and add bounding box to fix broken server-side geocoding.
+    // Skipped when placeId is supplied (Airbnb's place lookup is reliable for those)
+    // or when DISABLE_GEOCODING=true (user opt-out from third-party calls).
+    if (!placeId && !DISABLE_GEOCODING) {
+      const coords = await geocodeLocation(location);
+      if (coords) {
+        searchUrl.searchParams.append("ne_lat", coords.ne_lat);
+        searchUrl.searchParams.append("ne_lng", coords.ne_lng);
+        searchUrl.searchParams.append("sw_lat", coords.sw_lat);
+        searchUrl.searchParams.append("sw_lng", coords.sw_lng);
+      }
+    }
 
-  // Add cursor for pagination
-  if (cursor) {
-    searchUrl.searchParams.append("cursor", cursor);
+    // Add query parameters
+    if (checkin) searchUrl.searchParams.append("checkin", checkin);
+    if (checkout) searchUrl.searchParams.append("checkout", checkout);
+    if (dateFlexibilityDays > 0) searchUrl.searchParams.append("flexible_date_search_filter_type", FLEXIBLE_DATE_FILTERS[dateFlexibilityDays]);
+    if (currency !== undefined) searchUrl.searchParams.append("currency", currency);
+
+    // Add guests
+    const totalGuests = adults_int + children_int;
+    if (totalGuests > 0) {
+      searchUrl.searchParams.append("adults", adults_int.toString());
+      searchUrl.searchParams.append("children", children_int.toString());
+      searchUrl.searchParams.append("infants", infants_int.toString());
+      searchUrl.searchParams.append("pets", pets_int.toString());
+    }
+
+    // Add price range
+    if (minPrice != null) searchUrl.searchParams.append("price_min", minPrice.toString());
+    if (maxPrice != null) searchUrl.searchParams.append("price_max", maxPrice.toString());
+    if (minPrice != null || maxPrice != null) searchUrl.searchParams.append("price_filter_input_type", "0");
+
+    // Airbnb applies these minimums before pagination; 0 means no restriction.
+    if (minBedrooms !== undefined) searchUrl.searchParams.append("min_bedrooms", minBedrooms.toString());
+    if (minBeds !== undefined) searchUrl.searchParams.append("min_beds", minBeds.toString());
+    if (minBathrooms !== undefined) searchUrl.searchParams.append("min_bathrooms", minBathrooms.toString());
+
+    for (const amenity of new Set<string>(amenities ?? [])) {
+      searchUrl.searchParams.append("amenities[]", AMENITY_IDS[amenity]);
+    }
+
+    // Keep the public parameter name, but send Airbnb's room-type filter.
+    if (propertyType !== undefined) {
+      searchUrl.searchParams.append("room_types[]", ROOM_TYPES[propertyType]);
+    }
+
+    // Add cursor for pagination
+    if (cursor) {
+      searchUrl.searchParams.append("cursor", cursor);
+    }
+
   }
 
   // Check if path is allowed by robots.txt
@@ -644,8 +667,7 @@ async function handleAirbnbSearch(params: any) {
   try {
     log('info', 'Performing Airbnb search', { location, checkin, checkout, adults, children });
     
-    const response = await fetchWithUserAgent(searchUrl.toString());
-    const html = await response.text();
+    const html = await fetchHtmlWithUserAgent(searchUrl.toString(), prepared?.timeoutMs);
     const $ = cheerio.load(html);
     
     let staysSearchResults: any = {};
@@ -693,7 +715,7 @@ async function handleAirbnbSearch(params: any) {
             return {id, url: listingUrl.toString(), ...result, pricing: quote, availability }
           });
       staysSearchResults = {
-        ...filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined),
+        ...filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || !!prepared),
         paginationInfo: results.paginationInfo,
         retrievedAt: new Date().toISOString()
       }
@@ -725,6 +747,22 @@ async function handleAirbnbSearch(params: any) {
         }],
         isError: true
       };
+    }
+
+    if (params.discoverPartialStays) {
+      staysSearchResults = await runPartialStayDiscovery(staysSearchResults, searchUrl, {
+        checkin, checkout, dateFlexibilityDays,
+        minPartialNights: params.minPartialNights, maxPartialSearches: params.maxPartialSearches,
+      }, async (url, timeoutMs) => {
+        const result = await handleAirbnbSearch({
+          ...params, checkin: url.searchParams.get("checkin"), checkout: url.searchParams.get("checkout"),
+          dateFlexibilityDays: 0, cursor: undefined,
+          discoverPartialStays: false, minPartialNights: undefined, maxPartialSearches: undefined,
+        }, { url, timeoutMs });
+        const page = JSON.parse(result.content[0].text);
+        if (result.isError) throw new Error(page.error ?? "Shorter-stay search failed");
+        return page;
+      });
     }
 
     return {
@@ -822,8 +860,7 @@ async function handleAirbnbListingDetails(params: any) {
   try {
     log('info', 'Fetching listing details', { id, checkin, checkout });
     
-    const response = await fetchWithUserAgent(listingUrl.toString());
-    const html = await response.text();
+    const html = await fetchHtmlWithUserAgent(listingUrl.toString());
     const $ = cheerio.load(html);
     
     // Always an array. A consumer doing details.find(...) should never meet an object.

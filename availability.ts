@@ -64,10 +64,11 @@ export function describeAvailability(
 export function filterByAvailability<T extends {
   availability: ReturnType<typeof describeAvailability>;
   pricing: { datesMatchPrice: boolean | null };
-}>(results: T[], hasRequestedDates: boolean) {
+}>(results: T[], hasRequestedDates: boolean, includePartialStays = false) {
   const searchResults = hasRequestedDates
     ? results.filter(result =>
-      (result.availability.withinRequestedWindow === true || result.availability.matchType === "partial_stay") &&
+      (result.availability.withinRequestedWindow === true || (includePartialStays && result.availability.matchType === "partial_stay")) &&
+      (includePartialStays || result.availability.matchType !== "partial_stay") &&
       result.pricing.datesMatchPrice !== false)
     : results;
   return {

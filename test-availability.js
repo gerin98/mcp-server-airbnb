@@ -49,7 +49,7 @@ test('date offsets cross year and daylight-saving boundaries in calendar days', 
   assert.equal(dst.checkoutOffsetDays, 1);
 });
 
-test('an exact-date search retains labeled partial stays and excludes ambiguous results', () => {
+test('an exact-date search with partial stays enabled retains labeled partial stays and excludes ambiguous results', () => {
   const requested = { checkin: '2026-12-15', checkout: '2026-12-18' };
   const rows = [
     { id: 'exact', listingParamOverrides: null },
@@ -62,7 +62,7 @@ test('an exact-date search retains labeled partial stays and excludes ambiguous 
     const pricing = extractPricing(row, { ...requested, currency: 'USD' });
     return { id: row.id, pricing, availability: describeAvailability(pricing, requested) };
   });
-  const result = filterByAvailability(rows, true);
+  const result = filterByAvailability(rows, true, true);
   assert.deepEqual(result.searchResults.map(row => row.id), ['exact', 'alternate', 'partial-stay']);
   assert.deepEqual(result.availabilityFilter, { applied: true, excludedResults: 3, partialStayResults: 2 });
   const partial = result.searchResults.find(row => row.id === 'partial-stay');
@@ -79,6 +79,9 @@ test('an exact-date search retains labeled partial stays and excludes ambiguous 
   assert.equal(shifted.availability.coveredRequestedNights, 2);
   assert.equal(shifted.availability.matchesRequestedDates, false);
   assert.equal(rows.length, 6, 'Input results must remain intact');
+  const off = filterByAvailability(rows, true);
+  assert.deepEqual(off.searchResults.map(row => row.id), ['exact']);
+  assert.equal(off.availabilityFilter.partialStayResults, 0);
 });
 
 test('a fully unavailable page remains empty instead of returning alternative dates', () => {
@@ -89,6 +92,15 @@ test('a fully unavailable page remains empty instead of returning alternative da
   const undated = filterByAvailability(rows, false);
   assert.equal(undated.searchResults.length, 1);
   assert.deepEqual(undated.availabilityFilter, { applied: false, excludedResults: 0, partialStayResults: 0 });
+});
+
+test('the partial-stay toggle also excludes partial overlaps inside a flexibility window when off', () => {
+  const requested = { checkin: '2027-01-01', checkout: '2027-01-05', dateFlexibilityDays: 3 };
+  const pricing = { checkin: '2027-01-02', checkout: '2027-01-05', datesMatchPrice: true };
+  const rows = [{ pricing, availability: describeAvailability(pricing, requested) }];
+  assert.equal(rows[0].availability.withinRequestedWindow, true);
+  assert.equal(filterByAvailability(rows, true, false).searchResults.length, 0);
+  assert.equal(filterByAvailability(rows, true, true).searchResults.length, 1);
 });
 
 test('explicit flexibility retains nearby stays but excludes ones beyond the window', () => {

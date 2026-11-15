@@ -179,6 +179,9 @@ Search for Airbnb listings with comprehensive filtering options.
 - `checkin` (optional): Check-in date in YYYY-MM-DD format; supply together with `checkout`
 - `checkout` (optional): Check-out date in YYYY-MM-DD format; must be after `checkin`
 - `dateFlexibilityDays` (optional): `0` (exact dates), `1`, `2`, `3`, `7`, or `14`. Positive values request dates within that many days on either side of the requested check-in/check-out, and require both dates. Omit for exact dates.
+- `discoverPartialStays` (optional, default `false`): Toggle partial-stay results. When on, retain Airbnb's suggested partial matches and actively search shorter stays within the original dates. Requires both dates; cannot be combined with `cursor`.
+- `minPartialNights` (optional, default `2`): Minimum length for actively discovered stays; a positive whole number. Requires `discoverPartialStays: true`.
+- `maxPartialSearches` (optional, default `6`, maximum `8`): Limit extra date-window searches. Requires `discoverPartialStays: true`.
 - `adults` (optional): Number of adults (default: 1)
 - `children` (optional): Number of children (default: 0)
 - `infants` (optional): Number of infants (default: 0)
@@ -205,7 +208,8 @@ Search for Airbnb listings with comprehensive filtering options.
 To search for your stay, supply `checkin` and `checkout`. Omit
 `dateFlexibilityDays` (or use `0`) to request exact dates from Airbnb. Check-in is
 included; checkout is the departure date, so its night is not part of the stay.
-Partial stays returned by Airbnb are retained and explicitly labeled. Unknown
+Partial stays are excluded by default, including partial matches suggested by
+Airbnb. Turn on `discoverPartialStays` to include them with explicit labels. Unknown
 override dates and inconsistent quoted night counts are excluded from dated
 searches. Dates without an override inherit the dates sent to Airbnb.
 
@@ -226,10 +230,55 @@ their actual quoted dates. The `requestedNights`, `matchedNights`,
 `coveredRequestedNights`, and `missingRequestedNights` fields describe coverage
 without implying that a shorter quote pays for the full requested stay.
 
-Partial stays are retained even when exact dates are requested. Other
+With the toggle on, partial stays are retained even when exact dates are requested. Other
 alternative dates must fall within an explicitly selected flexibility window.
 The original pagination cursor is retained even if filtering empties a page;
 an empty page does not establish that the entire destination has no availability.
+
+To add partial-stay discovery to a four-night search:
+
+```json
+{
+  "location": "Boston, MA",
+  "checkin": "2027-01-15",
+  "checkout": "2027-01-19",
+  "adults": 2,
+  "discoverPartialStays": true,
+  "minPartialNights": 2,
+  "maxPartialSearches": 6
+}
+```
+
+This searches the original four-night stay, both three-night windows, and all
+three two-night windows, including the middle two nights. Longer requests may
+have more windows than the search limit permits. Windows are tried longest-first,
+alternating earlier and later starts before interior windows. Newly discovered
+stays must be wholly inside the original date range. Airbnb's own suggestions
+from the main search can also overlap the requested dates; their labels show
+the actual dates and coverage. `minPartialNights` applies to the extra searches.
+
+All extra searches reuse the same location bounds, guests, currency and filters.
+There are at most two concurrent requests, an eight-second timeout per extra
+search (including its response body), and a 20-second discovery budget. Existing
+full-stay results are kept first. Identical listing/date/currency options are
+deduplicated, and shorter versions of a listing already quoted for the full stay
+are suppressed. Different date options for other listings remain separate.
+At most 30 newly discovered options are added, ordered by requested nights covered.
+
+`partialStayDiscovery` reports the candidate window count, planned/completed/
+failed/skipped searches, unchecked windows, added and omitted results, and each
+window's search URL, dates, retrieval time and pagination information. Its
+`allWindowsSearched` flag describes date windows only: searches read just the first
+result page, so this never proves exhaustive listing availability. Failures leave
+the main results and successful shorter-stay results intact. The ordinary
+`paginationInfo` and `availabilityFilter.excludedResults` refer to the main page;
+`availabilityFilter.partialStayResults` counts partial results in the combined output.
+
+To paginate, use the selected window's dates and cursor in a separate normal
+search with discovery off. Check a candidate with `airbnb_listing_details` and
+its actual dates for a live booking quote. Separate partial results are not a
+confirmed split-stay itinerary and their prices must not be presented as a total
+for the entire original trip.
 
 For example, to search around a three-night trip with up to three days of date
 flexibility:
@@ -464,6 +513,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-availability.js` — exact and flexible date comparisons, unknown dates, window boundaries, year changes, and daylight-saving boundaries
 - `test-listing.js` — listing URL validation, page extraction fixtures and MCP validation; optional broader live listing checks
 - `test-booking.js` — dated quote fixtures, exact totals, cancellation summaries, request context, date matching, robots rules and failure handling
+- `test-partial-stays.js` — bounded date-window discovery, filter preservation, original-date labels, deduplication, partial failures and coverage; optional live toggle check
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -492,6 +542,8 @@ npm run test:pricing
 npm run test:availability
 # Also verify room minimums and amenities against actual live listings:
 AIRBNB_LIVE_TESTS=true npm run test:filters
+# Verify the partial-stay toggle with one normal search and three extra windows:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live partial" test-partial-stays.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters

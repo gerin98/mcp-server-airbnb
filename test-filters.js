@@ -170,6 +170,23 @@ test('date flexibility rejects unsupported values and requires a date range', as
   );
 });
 
+test('partial-stay discovery advertises an off-by-default toggle and validates before searching', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(t => t.name === 'airbnb_search').inputSchema;
+  assert.equal(schema.properties.discoverPartialStays.type, 'boolean');
+  assert.equal(schema.properties.discoverPartialStays.default, false);
+  assert.equal(schema.properties.maxPartialSearches.maximum, 8);
+  for (const args of [
+    { discoverPartialStays: true }, { discoverPartialStays: 'yes' },
+    { discoverPartialStays: true, checkin: '2027-01-01', checkout: '2027-01-05', cursor: 'next' },
+    { discoverPartialStays: true, checkin: '2027-01-01', checkout: '2027-01-05', maxPartialSearches: 9 },
+    { discoverPartialStays: true, checkin: '2027-01-01', checkout: '2027-01-05', minPartialNights: 0 },
+    { minPartialNights: 2 },
+  ]) {
+    await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', ...args } }), e => e.code === -32602);
+  }
+});
+
 for (const [days, airbnbCode] of [[0, null], [1, '0'], [2, '3'], [3, '1'], [7, '2'], [14, '6']]) {
   test(`live availability flexibility ${days} days`, { skip: process.env.AIRBNB_LIVE_TESTS !== 'true' }, async () => {
     const checkin = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
