@@ -194,6 +194,8 @@ Search for Airbnb listings with comprehensive filtering options.
 - `minBathrooms` (optional): Minimum number of bathrooms; a non-negative whole number. Omit or use `0` for any. Fractional minimums such as `1.5` are rejected because Airbnb truncates them.
 - `amenities` (optional): Array of required amenity names (see below). All selected amenities are requested together. Omit or use `[]` for unrestricted searches. Duplicates are ignored; unknown names are rejected.
 - `cursor` (optional): Pagination cursor for browsing results
+- `targetResults` (optional): Enable automatic pagination to seek 1–100 unique matches after filtering. Omit for the existing single-page behavior.
+- `maxPages` (optional): Maximum main-search pages, including the first (default 3, maximum 5). Requires `targetResults`.
 - `propertyType` (optional): Filter by room type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`. The parameter name is retained for compatibility; it does not filter building types such as house or apartment. Omit for any room type; unsupported values are rejected.
 - `buildingType` (optional): Choose one of `house`, `apartment`, `guesthouse`, `hotel`, `cabin`, or `villa`. This is independent of the room-type filter; omit for any building type.
 - `minRating` (optional): Minimum listing rating out of 5, such as `4.5`. Accepts numbers from 0 to 5; omit or use 0 for no minimum.
@@ -231,14 +233,53 @@ as exact; the parser prefers Airbnb's English accessibility label, which can
 provide the full count even when the display abbreviates it.
 
 Pagination cursors are preserved even if every row on a page is excluded. Repeat
-the same thresholds with a cursor to inspect later pages; no extra pages are
-automatically fetched for these filters, and the returned Airbnb `searchUrl`
+the same thresholds with a cursor to inspect later pages, or set `targetResults`
+to fetch more pages automatically. The returned Airbnb `searchUrl`
 does not encode them. An empty filtered page does not mean no matching listings
 exist. With partial-stay discovery enabled, the same thresholds apply to every
 extra search. The top-level `ratingFilter` aggregates examined/excluded rows
 across all successful pages before deduplication; individual window reports
 also retain their own counts. Missing-rating and missing-count exclusions may
 overlap and should not be added together.
+
+To seek 30 qualifying results across at most three pages:
+
+```json
+{
+  "location": "Boston, MA",
+  "minRating": 4.5,
+  "minReviewCount": 10,
+  "targetResults": 30,
+  "maxPages": 3
+}
+```
+
+Automatic pagination preserves the original location bounds, dates, guests and
+filters on each request. It counts unique listing/date/currency options after
+date and rating filtering, continuing past empty or duplicate-only pages.
+Complete fetched pages are returned, so results may exceed the target. Provider
+order is preserved; this does not add sorting.
+
+`autoPagination` reports `pagesFetched`, `pagesAttempted`, `returnedResults`,
+`duplicatesRemoved`, `targetReached`, `stopReason`, `nextCursor` and per-page
+filter counts and timestamps. Reasons include `target_reached`, `page_limit`,
+`time_limit`, `page_failed`, `no_more_cursors`, `pagination_unavailable`,
+`cursor_unrecognized` and `repeated_cursor`. Extra pages share a 15-second budget
+after the initial page, with at most eight seconds per request. The initial
+search and any shorter-stay discovery have their own time limits.
+
+Use `autoPagination.nextCursor` with the same filters to continue. On failure,
+prior results are kept and the failed cursor is returned for retry. The raw
+`paginationInfo` comes from the last successful page. Only provider-issued
+cursors are followed; missing or exhausted cursors do not prove all inventory
+was searched. No results are dropped merely to meet the target.
+
+When `discoverPartialStays` is also enabled, the main search is paginated first;
+its unique matches count toward `targetResults`. Shorter-stay discovery then
+adds options under its existing limits, fetching only the first page of each
+date window. `autoPagination` counts cover the main search, while top-level
+rating counts include all successful main and shorter-stay pages. Disable
+partial-stay discovery when resuming with a cursor.
 
 Building types can be combined with room types, dates, guests, amenities, price
 limits and partial-stay discovery. For example:
@@ -584,6 +625,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-partial-stays.js` — bounded date-window discovery, filter preservation, original-date labels, deduplication, partial failures and coverage; optional live toggle check
 - `test-building-types.js` — current Airbnb filter fixtures, room/building separation, partial-stay filter propagation and optional live checks for all six building types
 - `test-ratings.js` — numeric rating extraction, exact review counts, independent/inclusive thresholds, unknown values, partial-stay filtering and pagination; optional live checks
+- `test-pagination.js` — automatic pagination, bounded requests, deduplication, filter preservation, cursor continuation, empty pages, partial failures and interaction with shorter stays; optional live checks
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -618,6 +660,8 @@ AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live partial" test-part
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live building" test-building-types.js
 # Verify ratings on full/partial results and pagination on an empty filtered page:
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live rating" test-ratings.js
+# Verify automatic pagination, continuation and empty filtered pages:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live automatic" test-pagination.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters

@@ -163,7 +163,7 @@ export async function discoverPartialStays(
     ]) } : {}),
     availabilityFilter: {
       ...primary.availabilityFilter,
-      excludedResultsScope: "primary_search_page",
+      excludedResultsScope: primary.availabilityFilter?.excludedResultsScope ?? "primary_search_page",
       partialStayResults: searchResults.filter(r => r.availability?.matchType === "partial_stay").length,
     },
     partialStayDiscovery: {

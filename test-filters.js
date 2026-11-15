@@ -150,6 +150,16 @@ test('minimum rating and review count validate through MCP before searching', as
   }
 });
 
+test('automatic pagination validates options through MCP before searching', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
+  assert.equal(schema.properties.targetResults.maximum, 100);
+  assert.equal(schema.properties.maxPages.maximum, 5);
+  for (const args of [{ targetResults: 0 }, { targetResults: 101 }, { targetResults: '10' }, { targetResults: null }, { maxPages: 2 }, { targetResults: 10, maxPages: 6 }, { cursor: '' }]) {
+    await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', ...args } }), error => error.code === -32602);
+  }
+});
+
 test('currency validates its input through MCP', async () => {
   const { tools } = await client.listTools();
   const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;

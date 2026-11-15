@@ -16,6 +16,7 @@ import robotsParser from "robots-parser";
 import { AMENITIES, AMENITY_IDS } from "./amenities.js";
 import { BUILDING_TYPES, applyBuildingType, validateBuildingType } from "./building-types.js";
 import { extractRating, filterByRating, validateRatingOptions } from "./ratings.js";
+import { paginateSearch, validatePaginationOptions, MAX_PAGES } from "./pagination.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
@@ -43,7 +44,7 @@ const VERSION = getVersion();
 // Tool definitions
 const AIRBNB_SEARCH_TOOL: Tool = {
   name: "airbnb_search",
-  description: "Search for Airbnb listings with filters, pagination, and optional active shorter-stay discovery using discoverPartialStays. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price.",
+  description: "Search for Airbnb listings with filters, optional automatic pagination using targetResults/maxPages, and optional active shorter-stay discovery using discoverPartialStays. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price. Check autoPagination for search coverage and continuation when enabled.",
   inputSchema: {
     type: "object",
     properties: {
@@ -149,6 +150,14 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       cursor: {
         type: "string",
         description: "Base64-encoded string used for Pagination"
+      },
+      targetResults: {
+        type: "integer", minimum: 1, maximum: 100,
+        description: "Opt into automatic pagination: seek this many unique results after filtering. Returns whole pages, so the target may be exceeded. Main search only; shorter-stay discovery runs afterward. Extra pages have a shared 15-second budget. Omit for one page."
+      },
+      maxPages: {
+        type: "integer", minimum: 1, maximum: MAX_PAGES, default: 3,
+        description: "Maximum main-search pages including the first (default 3, maximum 5). Requires targetResults. Check autoPagination for the stop reason and continuation cursor."
       },
       propertyType: {
         type: "string",
@@ -491,8 +500,8 @@ async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
 }
 
 // API handlers
-async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number }): Promise<any> {
-  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); }
+async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number; includePartialStays?: boolean }): Promise<any> {
+  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); validatePaginationOptions(params); }
   catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
@@ -736,7 +745,7 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
             if (quote.currency) listingUrl.searchParams.set("currency", quote.currency);
             return {id, url: listingUrl.toString(), ...result, ...ratings[index], pricing: quote, availability }
           });
-      const available = filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || !!prepared);
+      const available = filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || prepared?.includePartialStays === true);
       const rated = filterByRating(available.searchResults as any[], params);
       staysSearchResults = {
         ...available,
@@ -778,16 +787,25 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
       };
     }
 
-    if (params.discoverPartialStays) {
+    if (!prepared && params.targetResults !== undefined) {
+      staysSearchResults = await paginateSearch(staysSearchResults, searchUrl, params, async (url, timeoutMs) => {
+        const result = await handleAirbnbSearch(params, { url, timeoutMs });
+        const page = JSON.parse(result.content[0].text);
+        if (result.isError) throw new Error(page.error ?? "Pagination search failed");
+        return page;
+      });
+    }
+
+    if (!prepared && params.discoverPartialStays) {
       staysSearchResults = await runPartialStayDiscovery(staysSearchResults, searchUrl, {
         checkin, checkout, dateFlexibilityDays,
         minPartialNights: params.minPartialNights, maxPartialSearches: params.maxPartialSearches,
       }, async (url, timeoutMs) => {
         const result = await handleAirbnbSearch({
           ...params, checkin: url.searchParams.get("checkin"), checkout: url.searchParams.get("checkout"),
-          dateFlexibilityDays: 0, cursor: undefined,
+          dateFlexibilityDays: 0, cursor: undefined, targetResults: undefined, maxPages: undefined,
           discoverPartialStays: false, minPartialNights: undefined, maxPartialSearches: undefined,
-        }, { url, timeoutMs });
+        }, { url, timeoutMs, includePartialStays: true });
         const page = JSON.parse(result.content[0].text);
         if (result.isError) throw new Error(page.error ?? "Shorter-stay search failed");
         return page;
