@@ -1,0 +1,731 @@
+{
+  "niobeClientData": [
+    [
+      "unrelated",
+      {
+        "data": {}
+      }
+    ],
+    [
+      "listing",
+      {
+        "data": {
+          "node": {
+            "pdpPresentation": {
+              "title": {
+                "__typename": "PdpUGCText",
+                "content": {
+                  "__typename": "UGCText",
+                  "localizedString": "Example apartment"
+                }
+              },
+              "descriptions": {
+                "__typename": "DemandStayListingPdpPresentationDescriptions",
+                "isVetted": false,
+                "longDescriptionHtml": {
+                  "__typename": "UGCText",
+                  "localizedString": "A sunny apartment.<br /><b>The space</b><br />Two bedrooms &amp; a kitchen."
+                },
+                "modalTitle": "About this space",
+                "shortDescriptionHtml": {
+                  "__typename": "PdpUGCText",
+                  "content": {
+                    "__typename": "UGCText",
+                    "localizedStringWithTranslationPreference": "Super location! <br /><br />Fenway Park, Museum of Fine Arts, Northeastern University, Longwood Medical Area, Symphony Hall, LOTS of Universities, House of Blues, Isabella Stewart Gardner Museum, Kelleher Rose Garden, Berklee College of Music, New England Conservatory, theaters, Whole Foods, Target, bars, restaurants, and a few minutes from downtown! <br /><br />We do not allow parties and celebrations. Only well behaved groups so our neighbors and community are happy. This is extremely important to us, thank you",
+                    "localizedString": "Super location! <br /><br />Fenway Park, Museum of Fine Arts, Northeastern University, Longwood Medical Area, Symphony Hall, LOTS of Universities, House of Blues, Isabella Stewart Gardner Museum, Kelleher Rose Garden, Berklee College of Music, New England Conservatory, theaters, Whole Foods, Target, bars, restaurants, and a few minutes from downtown! <br /><br />We do not allow parties and celebrations. Only well behaved groups so our neighbors and community are happy. This is extremely important to us, thank you",
+                    "source": "Super location! <br /><br />Fenway Park, Museum of Fine Arts, Northeastern University, Longwood Medical Area, Symphony Hall, LOTS of Universities, House of Blues, Isabella Stewart Gardner Museum, Kelleher Rose Garden, Berklee College of Music, New England Conservatory, theaters, Whole Foods, Target, bars, restaurants, and a few minutes from downtown! <br /><br />We do not allow parties and celebrations. Only well behaved groups so our neighbors and community are happy. This is extremely important to us, thank you"
+                  }
+                },
+                "title": null
+              },
+              "overview": {
+                "__typename": "StaysPdpOverview",
+                "title": "Entire rental unit in Boston, Massachusetts",
+                "items": [
+                  "4 guests",
+                  "2 bedrooms",
+                  "3 beds",
+                  "1 bath"
+                ],
+                "reviewsInfoLayout": "HIDDEN"
+              },
+              "personCapacity": 4,
+              "sharingConfig": {
+                "propertyType": "Entire rental unit"
+              },
+              "amenities": {
+                "__typename": "StaysPdpAmenitiesDetails",
+                "title": "What this place offers",
+                "subtitle": null,
+                "overridePreviewTitle": null,
+                "prioritizeShowingAllPreviewAmenities": false,
+                "featuredAmenities": null,
+                "previewAmenitiesGroups": [
+                  {
+                    "__typename": "AmenityItemsGroup",
+                    "title": null,
+                    "amenities": [
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Kitchen",
+                        "icon": "SYSTEM_COOKING_BASICS"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Wifi",
+                        "icon": "SYSTEM_WI_FI"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Dedicated workspace",
+                        "icon": "SYSTEM_WORKSPACE"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "TV",
+                        "icon": "SYSTEM_TV"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Washer",
+                        "icon": "SYSTEM_WASHER"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Dryer",
+                        "icon": "SYSTEM_DRYER"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Window AC unit",
+                        "icon": "SYSTEM_SNOWFLAKE"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Bathtub",
+                        "icon": "SYSTEM_BATHTUB"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Pack \u2019n play/Travel crib",
+                        "icon": "SYSTEM_PACK_N_PLAY"
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "available": true,
+                        "title": "Exterior security cameras on property",
+                        "icon": "SYSTEM_SURVEILLANCE"
+                      }
+                    ]
+                  }
+                ],
+                "seeAllAmenitiesGroups": [
+                  {
+                    "__typename": "AmenityItemsGroup",
+                    "title": "Bathroom",
+                    "amenities": [
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_61_1765966961853129231-0",
+                        "available": true,
+                        "title": "Bathtub",
+                        "icon": "SYSTEM_BATHTUB",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_45_1765966961853129231-0",
+                        "available": true,
+                        "title": "Hair dryer",
+                        "icon": "SYSTEM_HAIRDRYER",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_41_1765966961853129231-0",
+                        "available": true,
+                        "title": "Shampoo",
+                        "icon": "SYSTEM_SHAMPOO",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_657_1765966961853129231-0",
+                        "available": true,
+                        "title": "Conditioner",
+                        "icon": "SYSTEM_SHAMPOO",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_79_1765966961853129231-0",
+                        "available": true,
+                        "title": "Body soap",
+                        "icon": "SYSTEM_SOAP",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_77_1765966961853129231-0",
+                        "available": true,
+                        "title": "Hot water",
+                        "icon": "SYSTEM_HOT_WATER",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_bathroom_611_1765966961853129231-0",
+                        "available": true,
+                        "title": "Shower gel",
+                        "icon": "SYSTEM_SOAP",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "__typename": "AmenityItemsGroup",
+                    "title": "Services",
+                    "amenities": [
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_services_104_1765966961853129231-0",
+                        "available": true,
+                        "title": "Long term stays allowed",
+                        "icon": "SYSTEM_CALENDAR",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": "Allow stay for 28 days or more"
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_services_51_1765966961853129231-0",
+                        "available": true,
+                        "title": "Self check-in",
+                        "icon": "SYSTEM_KEY",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_services_54_1765966961853129231-0",
+                        "available": true,
+                        "title": "Lockbox",
+                        "icon": "SYSTEM_SAFE",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      },
+                      {
+                        "__typename": "AmenityItem",
+                        "id": "pdp_v3_services_107_1765966961853129231-0",
+                        "available": true,
+                        "title": "Cleaning available during stay",
+                        "icon": "SYSTEM_CLEAN",
+                        "subtitle": {
+                          "__typename": "LocalizedText",
+                          "text": ""
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "title": "Not included",
+                    "amenities": [
+                      {
+                        "title": "Dryer",
+                        "available": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              "highlights": [
+                {
+                  "__typename": "ListingPdpHighlight",
+                  "type": "LISTING_GUEST_FAVORITE",
+                  "iconPresentation": null,
+                  "headline": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "Top 5% of homes"
+                  },
+                  "body": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "This home is highly ranked based on ratings, reviews, and reliability."
+                  },
+                  "icon": {
+                    "__typename": "IconWrapper",
+                    "iconContent": "SYSTEM_GOLDEN_TROPHY"
+                  },
+                  "hostInteraction": null,
+                  "interaction": null
+                },
+                {
+                  "__typename": "ListingPdpHighlight",
+                  "type": "LISTING_CUSTOM_OFFLINE_GENERATED",
+                  "iconPresentation": null,
+                  "headline": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "In Fenway-Kenmore, near the park"
+                  },
+                  "body": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "Fenway Park is about a 5-min walk, with the Museum of Fine Arts and Gardner Museum under 10 min away."
+                  },
+                  "icon": {
+                    "__typename": "IconWrapper",
+                    "iconContent": "SYSTEM_LOCATION"
+                  },
+                  "hostInteraction": null,
+                  "interaction": null
+                },
+                {
+                  "__typename": "ListingPdpHighlight",
+                  "type": "LISTING_CUSTOM_OFFLINE_GENERATED",
+                  "iconPresentation": null,
+                  "headline": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "Full kitchen ready to use"
+                  },
+                  "body": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "A fully stocked kitchen with an oven, dishwasher, and coffee maker for easy meals between outings."
+                  },
+                  "icon": {
+                    "__typename": "IconWrapper",
+                    "iconContent": "SYSTEM_FORK_SPOON"
+                  },
+                  "hostInteraction": null,
+                  "interaction": null
+                },
+                {
+                  "__typename": "ListingPdpHighlight",
+                  "type": "LISTING_CUSTOM_OFFLINE_GENERATED",
+                  "iconPresentation": null,
+                  "headline": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "Clean, comfortable, and cozy"
+                  },
+                  "body": {
+                    "__typename": "LocalizedContent",
+                    "localizedContent": "Guests highlight how clean and comfortable the space is, with several praising the beds after long days out."
+                  },
+                  "icon": {
+                    "__typename": "IconWrapper",
+                    "iconContent": "SYSTEM_CLEAN"
+                  },
+                  "hostInteraction": null,
+                  "interaction": null
+                }
+              ],
+              "sleepingArrangements": {
+                "__typename": "MediaTour",
+                "stops": [
+                  {
+                    "__typename": "MediaTourStop",
+                    "id": "1765966961853129231-space-824509078",
+                    "name": "Bedroom 1",
+                    "items": [
+                      {
+                        "__typename": "ImageMediaTourItem",
+                        "image": {
+                          "__typename": "ImageEntity",
+                          "imageId": "2803040515",
+                          "uri": "https://a0.muscache.com/im/pictures/hosting/Hosting-1765966961853129231/original/b18881c5-ac98-4c7b-a115-a81c221e463a.png",
+                          "altText": null,
+                          "caption": null,
+                          "assetMetadata": {
+                            "__typename": "ImageAssetMetadata",
+                            "aspectRatio": 1.3333333333333333,
+                            "orientation": "LANDSCAPE",
+                            "originalWidth": 1448,
+                            "originalHeight": 1086
+                          }
+                        }
+                      }
+                    ],
+                    "description": {
+                      "__typename": "MediaTourStopDescription",
+                      "descriptions": [
+                        {
+                          "__typename": "LocalizedText",
+                          "text": "1 queen bed"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "name": "Where you\u2019ll sleep"
+              },
+              "location": {
+                "subtitle": "Boston, Massachusetts, United States",
+                "latitude": 42.34133,
+                "longitude": -71.09873,
+                "isExactLocation": false,
+                "exactAddress": null,
+                "verificationDetails": {
+                  "__typename": "StaysPdpLocationVerificationDetails",
+                  "isVerified": false,
+                  "verifiedListingText": null,
+                  "verifiedHelpHtml": "Exact location will be provided after booking.",
+                  "verifiedHelpLinkText": null,
+                  "verifiedHelpModalContent": null
+                }
+              },
+              "hostInfo": {
+                "__typename": "StaysPdpHostInfo",
+                "propertyContactHostContent": null,
+                "passportData": {
+                  "__typename": "PassportCardData",
+                  "name": "Example host",
+                  "userId": "RGVtYW5kVXNlcjo0NzU4NDI5NA==",
+                  "contextualUserId": "Q29udGV4dHVhbFVzZXI6MTQ2NTcxODA1OTkzNTE3MTQwNQ==",
+                  "titleText": "Superhost",
+                  "profileLoggingId": null,
+                  "isSuperhost": true,
+                  "isVerified": true,
+                  "stats": [
+                    {
+                      "__typename": "HostStat",
+                      "label": "Reviews",
+                      "value": "8942",
+                      "a11yValue": "8942 reviews",
+                      "type": "REVIEW_COUNT"
+                    },
+                    {
+                      "__typename": "HostStat",
+                      "label": "Rating",
+                      "value": "4.87",
+                      "a11yValue": "4.87 out of 5 average rating",
+                      "type": "RATING"
+                    },
+                    {
+                      "__typename": "HostStat",
+                      "label": "Years hosting",
+                      "value": "11",
+                      "a11yValue": "11 years of hosting",
+                      "type": "YEARS_HOSTING"
+                    }
+                  ],
+                  "ratingCount": 8942,
+                  "ratingAverage": 4.87,
+                  "timeAsHost": {
+                    "__typename": "TimeAsUser",
+                    "years": 11,
+                    "months": 0
+                  },
+                  "profileA11yLabel": "Jessy And Diego is a superhost. Learn more about Jessy And Diego."
+                },
+                "highlights": [],
+                "responseRateText": "Response rate: 100%",
+                "responseTimeText": "Responds within an hour",
+                "canBeMessaged": true,
+                "isAirbnbManaged": false,
+                "about": null,
+                "overview": {
+                  "__typename": "StaysPdpHostOverview",
+                  "title": {
+                    "__typename": "LocalizedText",
+                    "text": "Hosted by Jessy And Diego"
+                  },
+                  "items": [
+                    {
+                      "__typename": "LocalizedText",
+                      "text": "Superhost"
+                    },
+                    {
+                      "__typename": "LocalizedText",
+                      "text": "11 years hosting"
+                    }
+                  ]
+                }
+              },
+              "quality": {
+                "listingRatingStats": {
+                  "__typename": "DemandEntityRatingStats",
+                  "overallRatingStats": {
+                    "__typename": "DemandReviewRatingStats",
+                    "ratingAverage": 4.93,
+                    "ratingCount": "14"
+                  }
+                },
+                "isGuestFavorite": true,
+                "categoryRatings": [
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "CLEANLINESS",
+                    "localizedRating": "5.0",
+                    "label": "Cleanliness",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for cleanliness",
+                    "percentage": 1
+                  },
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "ACCURACY",
+                    "localizedRating": "5.0",
+                    "label": "Accuracy",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for accuracy",
+                    "percentage": 1
+                  },
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "CHECKIN",
+                    "localizedRating": "5.0",
+                    "label": "Check-in",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for check-in",
+                    "percentage": 1
+                  },
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "COMMUNICATION",
+                    "localizedRating": "5.0",
+                    "label": "Communication",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for communication",
+                    "percentage": 1
+                  },
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "LOCATION",
+                    "localizedRating": "5.0",
+                    "label": "Location",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for location",
+                    "percentage": 1
+                  },
+                  {
+                    "__typename": "CategoryRating",
+                    "categoryType": "VALUE",
+                    "localizedRating": "5.0",
+                    "label": "Value",
+                    "accessibilityLabel": "Rated 5.0 out of 5 stars for value",
+                    "percentage": 1
+                  }
+                ]
+              },
+              "rules": {
+                "__typename": "StaysPdpRuleDetails",
+                "title": "House rules",
+                "description": "You\u2019ll be staying in someone\u2019s home, so please treat it with care and respect. Guests are expected to honor these rules.",
+                "groupItems": [
+                  {
+                    "__typename": "StaysPdpDetailGroup",
+                    "type": "HOUSE_RULES_STRUCTURED_RULES",
+                    "title": "Standard house rules",
+                    "items": [
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_PERSON_CAPACITY",
+                        "icon": "SYSTEM_FAMILY",
+                        "title": "Up to 4 overnight guests",
+                        "description": null
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_PETS",
+                        "icon": "SYSTEM_NO_PETS",
+                        "title": "No pets",
+                        "description": null
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_SMOKING_ALLOWED",
+                        "icon": "SYSTEM_SMOKING_NOT_ALLOWED",
+                        "title": "No smoking",
+                        "description": {
+                          "__typename": "LocalizedText",
+                          "text": "Including vaping and e-cigarettes"
+                        }
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_QUIET_HOURS",
+                        "icon": "SYSTEM_EVENING",
+                        "title": "Quiet hours",
+                        "description": {
+                          "__typename": "LocalizedText",
+                          "text": "9:00\u202fPM - 7:00\u202fAM"
+                        }
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_EVENTS_ALLOWED",
+                        "icon": "SYSTEM_NO_EVENTS",
+                        "title": "No parties or events",
+                        "description": null
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": "HOUSE_RULES_COMMERCIAL_PHOTOGRAPHY_ALLOWED",
+                        "icon": "SYSTEM_NO_CAMERA",
+                        "title": "No commercial photography",
+                        "description": {
+                          "__typename": "LocalizedText",
+                          "text": "Including commercial filming"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "safetyAndProperty": {
+                "__typename": "StaysPdpSafetyAndPropertyDetails",
+                "title": "Safety & property",
+                "description": "Avoid surprises by looking over these important details about your host's property.",
+                "groupItems": [
+                  {
+                    "__typename": "StaysPdpDetailGroup",
+                    "type": null,
+                    "title": "Safety devices",
+                    "items": [
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": null,
+                        "icon": "SYSTEM_SURVEILLANCE",
+                        "title": "Exterior security cameras on property",
+                        "description": {
+                          "__typename": "PdpUGCText",
+                          "content": {
+                            "__typename": "UGCText",
+                            "localizedStringWithTranslationPreference": "Security cameras in entrance of the building ",
+                            "localizedString": "Security cameras in entrance of the building ",
+                            "source": "Security cameras in entrance of the building "
+                          }
+                        }
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": null,
+                        "icon": "SYSTEM_DETECTOR_CO",
+                        "title": "Carbon monoxide alarm installed",
+                        "description": null
+                      },
+                      {
+                        "__typename": "StaysPdpDetailItem",
+                        "type": null,
+                        "icon": "SYSTEM_DETECTOR_SMOKE",
+                        "title": "Smoke alarm installed",
+                        "description": null
+                      }
+                    ]
+                  }
+                ]
+              },
+              "accessibilityFeatures": {
+                "__typename": "MediaTour",
+                "name": "Accessibility features",
+                "translationDisclaimer": "Translate to English",
+                "stops": []
+              },
+              "pdpGuestPickerConfig": {
+                "__typename": "StaysPdpGuestPickerConfig",
+                "childrenMinAge": 2,
+                "childrenMaxAge": 12,
+                "guestCountSummary": "This place has a maximum of 4 guests, not including infants. Pets aren't allowed.",
+                "guestMaxCount": 4,
+                "includeInfantsInGuestCount": false,
+                "childAgesRequired": false,
+                "childrenAllowed": true,
+                "infantsAllowed": true,
+                "childrenAndInfantsWarning": null
+              },
+              "heroMedia": {
+                "__typename": "HeroItemConnection",
+                "edges": [
+                  {
+                    "__typename": "HeroItemEdge",
+                    "node": {
+                      "__typename": "HeroImageItem",
+                      "image": {
+                        "__typename": "ImageEntity",
+                        "altText": null,
+                        "id": "SW1hZ2VFbnRpdHk6MjgwMzA0MDUyMw==",
+                        "uri": "https://a0.muscache.com/im/pictures/hosting/Hosting-1765966961853129231/original/32a7e457-2a4a-4102-adba-e85fa0cd0988.png",
+                        "caption": null,
+                        "assetMetadata": {
+                          "__typename": "ImageAssetMetadata",
+                          "aspectRatio": 1.3333333333333333,
+                          "orientation": "LANDSCAPE",
+                          "originalWidth": 1448,
+                          "originalHeight": 1086
+                        },
+                        "enrichmentData": {
+                          "__typename": "ImageEnrichmentData",
+                          "blurHash": "KNOfx*.8v|*0MdNe$fI:Vr"
+                        },
+                        "tags": [
+                          {
+                            "__typename": "MediaTag",
+                            "name": "Living_room"
+                          },
+                          {
+                            "__typename": "MediaTag",
+                            "name": "Bedroom"
+                          }
+                        ],
+                        "moderatedUri": "https://a0.muscache.com/im/pictures/hosting/Hosting-1765966961853129231/original/32a7e457-2a4a-4102-adba-e85fa0cd0988.png"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "presentation": {
+            "stayProductDetailPage": {
+              "sections": {
+                "sections": [
+                  {
+                    "sectionId": "DESCRIPTION_DEFAULT",
+                    "section": {
+                      "__typename": "DescriptionSection"
+                    }
+                  },
+                  {
+                    "sectionId": "BOOK_IT_SIDEBAR",
+                    "section": {
+                      "available": null,
+                      "structuredDisplayPrice": null,
+                      "calendarSubtitle": "Add your travel dates for exact pricing"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]
+  ]
+}

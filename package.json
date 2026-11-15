@@ -27,7 +27,11 @@
     "prepare": "npm run build",
     "version": "node sync-version.js && git add manifest.json",
     "pretest": "npm run build",
-    "test": "node test-extension.js && node test-amenities.js",
+    "test": "node --test test-availability.js test-pricing.js test-filters.js test-listing.js && node test-extension.js && node test-amenities.js",
+    "test:filters": "npm run build && node --test test-filters.js",
+    "test:pricing": "npm run build && node --test test-pricing.js",
+    "test:availability": "npm run build && node --test test-availability.js test-filters.js",
+    "test:listing": "npm run build && node --test test-listing.js",
     "watch": "tsc --watch",
     "sync-version": "node sync-version.js"
   },

@@ -1,0 +1,214 @@
+{
+  "source": "Airbnb Boston search responses captured 2026-11-15; only price and date fields retained.",
+  "cases": {
+    "usd": {
+      "row": {
+        "structuredDisplayPrice": {
+          "__typename": "StructuredDisplayPrice",
+          "primaryLine": {
+            "__typename": "QualifiedDisplayPriceLine",
+            "accessibilityLabel": "$480 for 3 nights",
+            "price": "$480",
+            "qualifier": "for 3 nights",
+            "concatQualifierLeft": false,
+            "trailing": null
+          },
+          "secondaryLine": null,
+          "explanationData": {
+            "__typename": "DisplayPriceExplanationData",
+            "title": "Price details",
+            "subtitle": null,
+            "priceDetails": [
+              {
+                "__typename": "DisplayPriceExplanationLineGroup",
+                "items": [
+                  {
+                    "__typename": "DefaultExplanationLineItem",
+                    "description": "3 nights x $159.97",
+                    "priceString": "$479.91",
+                    "explanationData": null
+                  }
+                ],
+                "renderBorderTop": false,
+                "collapsable": null
+              }
+            ]
+          },
+          "explanationDataDisplayPosition": "PRIMARY_LINE",
+          "displayPriceStyle": "TOTAL_ONLY"
+        },
+        "listingParamOverrides": {}
+      },
+      "context": {
+        "currency": "USD",
+        "checkin": "2026-12-01",
+        "checkout": "2026-12-04",
+        "requestedCurrency": "USD"
+      }
+    },
+    "price_reduction": {
+      "row": {
+        "structuredDisplayPrice": {
+          "__typename": "StructuredDisplayPrice",
+          "primaryLine": {
+            "__typename": "DiscountedDisplayPriceLine",
+            "accessibilityLabel": "$657 for 3 nights, originally $866",
+            "discountedPrice": "$657",
+            "originalPrice": "$866",
+            "qualifier": "for 3 nights",
+            "concatQualifierLeft": false,
+            "trailing": null
+          },
+          "secondaryLine": null,
+          "explanationData": {
+            "__typename": "DisplayPriceExplanationData",
+            "title": "Price details",
+            "subtitle": null,
+            "priceDetails": [
+              {
+                "__typename": "DisplayPriceExplanationLineGroup",
+                "items": [
+                  {
+                    "__typename": "DiscountedExplanationLineItem",
+                    "description": "3 nights x $219.00",
+                    "priceString": "$657.00",
+                    "originalPriceString": "$866.00",
+                    "explanationData": null
+                  }
+                ],
+                "renderBorderTop": false,
+                "collapsable": null
+              },
+              {
+                "__typename": "DisplayPriceExplanationDisclaimer",
+                "content": "Naomi's Homes recently lowered the price for these dates (from the average rate for the past 60 nights)."
+              }
+            ]
+          },
+          "explanationDataDisplayPosition": "PRIMARY_LINE",
+          "displayPriceStyle": "TOTAL_ONLY"
+        },
+        "listingParamOverrides": {}
+      },
+      "context": {
+        "currency": "USD",
+        "checkin": "2026-12-01",
+        "checkout": "2026-12-04",
+        "requestedCurrency": "USD"
+      }
+    },
+    "eur": {
+      "row": {
+        "structuredDisplayPrice": {
+          "__typename": "StructuredDisplayPrice",
+          "primaryLine": {
+            "__typename": "QualifiedDisplayPriceLine",
+            "accessibilityLabel": "\u20ac436 for 3 nights",
+            "price": "\u20ac436",
+            "qualifier": "for 3 nights",
+            "concatQualifierLeft": false,
+            "trailing": null
+          },
+          "secondaryLine": null,
+          "explanationData": {
+            "__typename": "DisplayPriceExplanationData",
+            "title": "Price details",
+            "subtitle": null,
+            "priceDetails": [
+              {
+                "__typename": "DisplayPriceExplanationLineGroup",
+                "items": [
+                  {
+                    "__typename": "DefaultExplanationLineItem",
+                    "description": "3 nights x \u20ac145.13",
+                    "priceString": "\u20ac435.39",
+                    "explanationData": null
+                  }
+                ],
+                "renderBorderTop": false,
+                "collapsable": null
+              }
+            ]
+          },
+          "explanationDataDisplayPosition": "PRIMARY_LINE",
+          "displayPriceStyle": "TOTAL_ONLY"
+        },
+        "listingParamOverrides": {}
+      },
+      "context": {
+        "currency": "EUR",
+        "checkin": "2026-12-01",
+        "checkout": "2026-12-04",
+        "requestedCurrency": "EUR"
+      }
+    },
+    "undated": {
+      "row": {
+        "structuredDisplayPrice": {
+          "__typename": "StructuredDisplayPrice",
+          "primaryLine": {
+            "__typename": "DiscountedDisplayPriceLine",
+            "accessibilityLabel": "$367 for 2 nights, originally $452",
+            "discountedPrice": "$367",
+            "originalPrice": "$452",
+            "qualifier": "for 2 nights",
+            "concatQualifierLeft": false,
+            "trailing": null
+          },
+          "secondaryLine": null,
+          "explanationData": {
+            "__typename": "DisplayPriceExplanationData",
+            "title": "Price details",
+            "subtitle": null,
+            "priceDetails": [
+              {
+                "__typename": "DisplayPriceExplanationLineGroup",
+                "items": [
+                  {
+                    "__typename": "DefaultExplanationLineItem",
+                    "description": "2 nights x $226.00",
+                    "priceString": "$452.00",
+                    "explanationData": null
+                  },
+                  {
+                    "__typename": "DiscountedExplanationLineItem",
+                    "description": "Long stay discount",
+                    "priceString": "-$85.50",
+                    "originalPriceString": null,
+                    "explanationData": null
+                  }
+                ],
+                "renderBorderTop": false,
+                "collapsable": null
+              },
+              {
+                "__typename": "DisplayPriceExplanationLineGroup",
+                "items": [
+                  {
+                    "__typename": "HighlightExplanationLineItem",
+                    "description": "Price after discount",
+                    "priceString": "$366.50",
+                    "explanationData": null,
+                    "originalPriceString": null,
+                    "accessibilityLabel": "$366.50 total before taxes"
+                  }
+                ],
+                "renderBorderTop": true,
+                "collapsable": null
+              }
+            ]
+          },
+          "explanationDataDisplayPosition": "PRIMARY_LINE",
+          "displayPriceStyle": "TOTAL_ONLY"
+        },
+        "listingParamOverrides": {
+          "checkin": "2026-12-01",
+          "checkout": "2026-12-03"
+        }
+      },
+      "context": {
+        "currency": "USD"
+      }
+    }
+  }
+}

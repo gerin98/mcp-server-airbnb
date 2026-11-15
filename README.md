@@ -29,10 +29,13 @@ If you'd rather self-host the open-source server, read on.
 - **Location-based search** with support for cities, states, and regions
 - **International location support** via client-side geocoding, so non-US queries (e.g. "Paris, France", "Copenhagen, Denmark") return results in the right city
 - **Google Maps Place ID** integration for precise location targeting
-- **Property type filtering** for entire homes, private rooms, shared rooms, or hotel rooms
+- **Room type filtering** for entire homes, private rooms, shared rooms, or hotel rooms
 - **Date filtering** with check-in and check-out date support
+- **Flexible availability search** around requested dates, with the matched dates reported for each listing
 - **Guest configuration** including adults, children, infants, and pets
 - **Price range filtering** with minimum and maximum price constraints
+- **Bedroom, bed, and bathroom filtering** with independent minimum counts
+- **Amenity filtering** for Wi-Fi, kitchens, parking, pools, and more, with multiple requirements per search
 - **Pagination support** for browsing through large result sets
 
 ### 🏠 Detailed Property Information
@@ -50,6 +53,33 @@ If you'd rather self-host the open-source server, read on.
 - **Secure configuration** through MCPB user settings
 
 ## Installation
+
+### For Codex (local checkout)
+
+Install dependencies and build from the repository directory:
+
+```bash
+npm ci
+```
+
+`npm ci` runs the build automatically. Register the built server using absolute
+paths so Codex can start it from any working directory:
+
+```bash
+codex mcp add airbnb -- /absolute/path/to/node /absolute/path/to/mcp-server-airbnb/dist/index.js
+codex mcp get airbnb
+```
+
+Use `command -v node` to find your Node executable. With Homebrew's keg-only
+Node 22 on Apple Silicon, it is typically `/opt/homebrew/opt/node@22/bin/node`;
+add `/opt/homebrew/opt/node@22/bin` to your shell's `PATH` to run `npm`.
+
+This configuration runs your local checkout. After source changes, run
+`npm run build` and reconnect the MCP server to load the updated code.
+
+Robots.txt compliance is enabled by default and can block searches. For testing,
+the tools accept `ignoreRobotsText: true` per request. The server also supports
+the `--ignore-robots-txt` startup flag described below.
 
 ### For Claude Desktop
 This extension is packaged as an MCP Bundle (`.mcpb`) file. To install:
@@ -118,6 +148,27 @@ The extension provides the following user-configurable options:
 
 ## Tools
 
+### `airbnb_list_amenities`
+
+Discover the amenity filters this server supports. No parameters are required;
+call it with `{}` or omit the arguments. It works offline and returns an
+`amenities` array with each filter's `name`, readable `label`, and `description`.
+Use the names directly in `airbnb_search`'s `amenities` array.
+
+For example, one entry is:
+
+```json
+{
+  "name": "pool",
+  "label": "Pool",
+  "description": "Access to a pool, which may be shared. Check seasonal availability, heating, and access hours."
+}
+```
+
+This catalog lists supported search options. It does not determine whether a
+particular location or property offers them. Use `airbnb_search` to find matching
+stays, then `airbnb_listing_details` to inspect a property's amenities.
+
 ### `airbnb_search`
 
 Search for Airbnb listings with comprehensive filtering options.
@@ -125,54 +176,191 @@ Search for Airbnb listings with comprehensive filtering options.
 **Parameters:**
 - `location` (required): Location to search (e.g., "San Francisco, CA"). When supplied without `placeId`, the server geocodes this string client-side via Photon/Nominatim — see [External Services](#external-services).
 - `placeId` (optional): Google Maps Place ID. Overrides `location` and skips client-side geocoding entirely (no third-party calls).
-- `checkin` (optional): Check-in date in YYYY-MM-DD format
-- `checkout` (optional): Check-out date in YYYY-MM-DD format
+- `checkin` (optional): Check-in date in YYYY-MM-DD format; supply together with `checkout`
+- `checkout` (optional): Check-out date in YYYY-MM-DD format; must be after `checkin`
+- `dateFlexibilityDays` (optional): `0` (exact dates), `1`, `2`, `3`, `7`, or `14`. Positive values request dates within that many days on either side of the requested check-in/check-out, and require both dates. Omit for exact dates.
 - `adults` (optional): Number of adults (default: 1)
 - `children` (optional): Number of children (default: 0)
 - `infants` (optional): Number of infants (default: 0)
 - `pets` (optional): Number of pets (default: 0)
-- `minPrice` (optional): Minimum price per night
-- `maxPrice` (optional): Maximum price per night
+- `minPrice` (optional): Minimum nightly price in the selected currency; uses Airbnb's nightly-price filter
+- `maxPrice` (optional): Maximum nightly price in the selected currency; uses Airbnb's nightly-price filter
+- `currency` (optional): Requested three-letter uppercase currency code, such as `USD`, `EUR`, or `GBP`. Omit to use Airbnb's default. Output reports the actual resolved currency, including any mismatch with the request.
+- `minBedrooms` (optional): Minimum number of bedrooms; a non-negative whole number. Omit or use `0` for any.
+- `minBeds` (optional): Minimum number of beds, independent of bedrooms and guest count; a non-negative whole number. Omit or use `0` for any.
+- `minBathrooms` (optional): Minimum number of bathrooms; a non-negative whole number. Omit or use `0` for any. Fractional minimums such as `1.5` are rejected because Airbnb truncates them.
+- `amenities` (optional): Array of required amenity names (see below). All selected amenities are requested together. Omit or use `[]` for unrestricted searches. Duplicates are ignored; unknown names are rejected.
 - `cursor` (optional): Pagination cursor for browsing results
-- `propertyType` (optional): Filter by property type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`
+- `propertyType` (optional): Filter by room type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`. The parameter name is retained for compatibility; it does not filter building types such as house or apartment. Omit for any room type; unsupported values are rejected.
 - `ignoreRobotsText` (optional): Override robots.txt for this request
 
 **Returns:**
 - Search results with property details, pricing, and direct links
 - Pagination information for browsing additional results
 - Search URL for reference
+- Retrieval timestamp (`retrievedAt`) and structured `pricing` for each listing
+- `availability` describing how each result's quoted dates compare with your request
+- `availabilityFilter.applied`, `availabilityFilter.excludedResults`, and `availabilityFilter.partialStayResults`, reporting date filtering and how many results are excluded or partial stays
+
+To search for your stay, supply `checkin` and `checkout`. Omit
+`dateFlexibilityDays` (or use `0`) to request exact dates from Airbnb. Check-in is
+included; checkout is the departure date, so its night is not part of the stay.
+Partial stays returned by Airbnb are retained and explicitly labeled. Unknown
+override dates and inconsistent quoted night counts are excluded from dated
+searches. Dates without an override inherit the dates sent to Airbnb.
+
+Each result has an `availability.matchType` and a readable `availability.label`:
+
+- `exact_dates`: the full requested stay.
+- `partial_stay`: covers some, but not all, requested nights. For example,
+  “Partial stay: 2 of 3 requested nights; quoted stay 2027-01-15 to 2027-01-17
+  (2 nights).” A shifted stay may also include nights outside your request;
+  `matchedNights` and `coveredRequestedNights` make that distinction explicit.
+- `alternative_dates`: different dates accepted within an explicitly requested
+  flexibility window; never labeled as an exact match.
+- `suggested_dates`: Airbnb chose dates because none were requested.
+- `unknown`: the available date information cannot be reliably compared.
+
+Always show the label for partial or alternative stays, and use the price for
+their actual quoted dates. The `requestedNights`, `matchedNights`,
+`coveredRequestedNights`, and `missingRequestedNights` fields describe coverage
+without implying that a shorter quote pays for the full requested stay.
+
+Partial stays are retained even when exact dates are requested. Other
+alternative dates must fall within an explicitly selected flexibility window.
+The original pagination cursor is retained even if filtering empties a page;
+an empty page does not establish that the entire destination has no availability.
+
+For example, to search around a three-night trip with up to three days of date
+flexibility:
+
+```json
+{
+  "location": "Boston, MA",
+  "checkin": "2027-01-15",
+  "checkout": "2027-01-18",
+  "dateFlexibilityDays": 3,
+  "adults": 2
+}
+```
+
+Each result's `availability` includes the requested and matched dates,
+`matchesRequestedDates`, `withinRequestedWindow`, the check-in/check-out offsets
+in days, and `matchesRequestedStayLength`. Date comparisons are `null` when
+there is no valid date pair to compare. Flexible results may have a different
+stay length; the associated `pricing` always uses the dates quoted for that
+listing. Links preserve those matched dates, the requested guest counts, and the
+returned currency.
+
+Availability here is based on Airbnb search results, not a separate listing
+calendar check. This feature does not provide a calendar of every available day.
+Without requested dates, Airbnb's suggested dates are labeled in `pricing` and
+are not treated as a match to an unspecified trip.
+
+Each search result preserves the existing `structuredDisplayPrice` text and adds
+a `pricing` object. Monetary amounts are numbers in major units of `currency`
+(for example, dollars rather than cents). Missing information is `null`.
+
+| Field | Meaning |
+| --- | --- |
+| `currency`, `requestedCurrency`, `currencyMatchesRequest` | Actual currency from Airbnb's page metadata, requested currency, and whether they match. A `$` symbol alone never determines the currency. |
+| `checkin`, `checkout`, `datesSource` | Effective dates and whether they were `requested`, `airbnb_suggested`, `airbnb_override`, or `unknown`. Undated searches do not mean tonight. |
+| `nights`, `datesMatchPrice` | Number of nights quoted and whether it agrees with the date range. Any mismatch is also recorded in `notes`. |
+| `baseNightlyRate` | The rate in Airbnb's “N nights × amount” breakdown, before separately itemized charges or discounts. |
+| `displayedNightlyRate` | A headline explicitly quoted per night, when available. It may include fees and is kept separate from the base rate. |
+| `stayTotal`, `stayTotalSource`, `stayTotalIsApproximate` | Total from an explicit breakdown total when available; otherwise the displayed stay total, marked approximate because headlines may be rounded. The server never invents a total by multiplying the base rate. |
+| `averageNightlyTotal` | `stayTotal / nights`, rounded to the currency's precision. It inherits the total's approximation and tax/fee inclusion status; it is not necessarily an all-in nightly cost. |
+| `originalStayTotal` | The displayed pre-reduction total, when available; it may also be rounded. |
+| `fees`, `taxes`, `discounts` | Itemized entries with labels, numeric amounts, and original display strings. Discounts retain their signs. Empty arrays mean no entries were provided, not zero charges. |
+| `priceReductions` | Comparisons between original and current breakdown amounts. These are not additional discount line items to subtract again. |
+| `taxesIncluded`, `feesIncluded` | `true` or `false` only when Airbnb explicitly says so; otherwise `null`. |
+| `breakdown`, `display`, `notes` | Unflattened price items, original headline text, disclaimers, and detected mismatches. |
+
+For example, a headline of `$367 for 2 nights` can have an explicit breakdown
+total of `$366.50 total before taxes`. That yields `stayTotal: 366.5`,
+`averageNightlyTotal: 183.25`, `taxesIncluded: false`, and
+`stayTotalIsApproximate: false`. If only the rounded headline is available, the
+total stays `367` and is marked approximate. These are search quotes, not a final
+checkout charge. The listing-details tool continues to return property details;
+structured pricing is currently supplied by search.
+
+For example, pass `{"location":"Boston, MA","minBedrooms":2,"minBeds":3,"minBathrooms":2}`
+to search for stays with at least two bedrooms, three beds, and two bathrooms. These filters
+are applied by Airbnb before pagination and can be combined with dates, guests,
+price, and room type filters.
+
+Call `airbnb_list_amenities` for descriptions, or use names from this list:
+
+```text
+wifi, kitchen, washer, dryer, air_conditioning, heating, dedicated_workspace,
+tv, hair_dryer, iron, pool, hot_tub, free_parking, ev_charger, crib, king_bed,
+gym, bbq_grill, breakfast, indoor_fireplace, self_check_in, smoking_allowed,
+smoke_alarm, carbon_monoxide_alarm
+```
+
+For example, search for at least two bedrooms, three beds, two bathrooms, Wi-Fi, a kitchen,
+and a washer:
+
+```json
+{
+  "location": "Boston, MA",
+  "minBedrooms": 2,
+  "minBeds": 3,
+  "minBathrooms": 2,
+  "amenities": ["wifi", "kitchen", "washer"]
+}
+```
+
+The server translates these names to Airbnb's `amenities[]` search parameters.
+Filters use Airbnb's amenity categories; they do not guarantee exclusive use of
+facilities such as pools or gyms. Check listing details for those specifics.
 
 ### `airbnb_listing_details`
 
-Get detailed information about a specific Airbnb listing.
+Get public details from a full Airbnb listing URL or listing ID.
+
+```json
+{
+  "url": "https://www.airbnb.com/rooms/53610715?check_in=2027-01-15&check_out=2027-01-18&adults=2",
+  "currency": "USD"
+}
+```
 
 **Parameters:**
-- `id` (required): Airbnb listing ID
-- `checkin` (optional): Check-in date in YYYY-MM-DD format
-- `checkout` (optional): Check-out date in YYYY-MM-DD format
-- `adults` (optional): Number of adults (default: 1)
-- `children` (optional): Number of children (default: 0)
-- `infants` (optional): Number of infants (default: 0)
-- `pets` (optional): Number of pets (default: 0)
-- `ignoreRobotsText` (optional): Override robots.txt for this request
+
+- `url` or `id` (one required): Full Airbnb `/rooms/ID` URL or numeric ID as a string. Regional Airbnb domains are accepted and normalized to `www.airbnb.com`. Shortened share links are not supported; use the full listing URL. If both are provided, they must refer to the same listing.
+- `checkin`, `checkout` (optional): Paired YYYY-MM-DD dates; checkout must be after checkin.
+- `adults` (optional): Whole number at least 1 (default: 1).
+- `children`, `infants`, `pets` (optional): Nonnegative whole numbers (default: 0).
+- `currency` (optional): Three-letter uppercase code such as USD or EUR.
+- `ignoreRobotsText` (optional): Override robots.txt for this request.
+
+Dates (`check_in`/`check_out`), guest counts and currency are read from the URL.
+Explicit arguments override those URL values. Tracking parameters are discarded.
 
 **Returns:**
-- Detailed property information including:
-  - Location details with coordinates
-  - Amenities and facilities, as `seeAllAmenitiesGroups` — an object keyed by amenity category, so a category can be addressed directly. Amenities Airbnb shows struck through arrive under its own `"Not included"` category:
 
-    ```json
-    {
-      "seeAllAmenitiesGroups": {
-        "Bathroom": "Hair dryer",
-        "Heating and cooling": "AC - split type ductless system, Heating",
-        "Not included": "Dryer, Hot water"
-      }
-    }
-    ```
-  - House rules and policies
-  - Property highlights and descriptions
-  - Direct link to the listing
+- `listingId`, `listingUrl` and `retrievedAt`.
+- `listing`: structured title, full page description, room/capacity summary,
+  sleeping arrangements, amenity groups with `available` flags, host details,
+  listing ratings and category scores, photos, house rules, safety information,
+  accessibility features, guest requirements and location. Location retains
+  `isExactLocation` when supplied; approximate coordinates are not an exact address.
+- `listing.booking`: requested dates, resolved/requested currency, any embedded
+  pricing and cancellation policy, and availability status. URL dates alone do
+  **not** verify price or availability. Airbnb often loads these separately in
+  the browser, even when dates were supplied. In that case `pricing` and
+  `available` are `null`, `pricingStatus` is `not_provided`, and
+  `availabilityStatus` is `unknown`. A page availability flag is not confirmation
+  for the requested dates; `datesVerified` remains false. Embedded prices retain
+  the structured nightly/total distinctions used by search without attributing
+  them to unverified URL dates.
+- `listing.coverage`: missing fields and explicit scope. This returns information
+  embedded in the public page, not the full review history or availability calendar.
+- `details`: the existing section array, retained for compatibility, including
+  category-keyed `seeAllAmenitiesGroups` and unavailable-amenity labels.
+
+Use `airbnb_search` for dated search quotes and clearly labeled partial stays.
 
 ## Technical Details
 
@@ -244,16 +432,40 @@ npm run watch
 ### Testing
 
 ```bash
-# Build, then run both suites
+# Build, then run all suites
 npm test
 ```
 
-`npm test` drives the built server over stdio and calls the tools for real:
+`npm test` drives the built server over stdio:
 
+- `test-filters.js` — offline amenity catalog discovery, consistency with search and the bundle manifest, and filter validation; optional live search checks
+- `test-pricing.js` — captured price-response fixtures and edge cases covering currency, rounding, nightly versus total prices, fees, discounts, dates, and unknown tax information
+- `test-availability.js` — exact and flexible date comparisons, unknown dates, window boundaries, year changes, and daylight-saving boundaries
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
 
-Both hit `airbnb.com` and the geocoders over the network, so they need connectivity and can fail if Airbnb changes its page structure — that's the point of them, but it also means they aren't suitable as an unattended CI gate.
+The extension and amenities suites hit `airbnb.com` and the geocoders over the network, so they need connectivity and can fail if Airbnb changes its page structure — that's the point of them, but it also means they aren't suitable as an unattended CI gate.
+
+To run just the search-filter tests:
+
+```bash
+npm run test:filters
+# Run deterministic pricing tests:
+npm run test:pricing
+# Run availability comparisons and filter validation:
+npm run test:availability
+# Also verify room minimums and amenities against actual live listings:
+AIRBNB_LIVE_TESTS=true npm run test:filters
+```
+
+The live filter tests use the robots.txt testing override and check room filters
+independently and together, zero minimums, an empty amenity list, a single amenity,
+and multiple amenities combined with room minimums. They also check duplicate
+handling and inspect listing details for three results from each amenity search.
+Room-type tests also inspect Airbnb's returned request data to verify that all
+four categories are applied as room filters, without a building-type restriction.
+Availability tests verify all five flexibility windows and exact dates against
+Airbnb's returned request data, and check that listing links preserve quote dates.
 
 The server can also be run directly:
 

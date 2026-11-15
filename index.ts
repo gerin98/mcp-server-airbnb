@@ -13,6 +13,10 @@ import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 import { cleanObject, flattenArraysInObject, pickBySchema, diagnoseJsonPath, findPdpPresentation, extractAmenities, extractHighlights, keyAmenityGroups } from "./util.js";
 import robotsParser from "robots-parser";
+import { AMENITIES, AMENITY_IDS } from "./amenities.js";
+import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
+import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
+import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -35,7 +39,7 @@ const VERSION = getVersion();
 // Tool definitions
 const AIRBNB_SEARCH_TOOL: Tool = {
   name: "airbnb_search",
-  description: "Search for Airbnb listings with various filters and pagination. Provide direct links to the user",
+  description: "Search for Airbnb listings with various filters and pagination. Provide direct links to the user. Clearly label partial stays and alternative dates using availability.label, and show the actual quoted dates and price.",
   inputSchema: {
     type: "object",
     properties: {
@@ -49,11 +53,16 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       },
       checkin: {
         type: "string",
-        description: "Check-in date (YYYY-MM-DD)"
+        description: "Start of the requested stay (YYYY-MM-DD). Supply with checkout to search availability. Partial-stay matches are retained and clearly labeled with the dates and requested nights they cover."
       },
       checkout: {
         type: "string",
-        description: "Check-out date (YYYY-MM-DD)"
+        description: "End of the requested stay (YYYY-MM-DD); the checkout night is not included. Supply with checkin."
+      },
+      dateFlexibilityDays: {
+        type: "integer",
+        enum: [0, ...Object.keys(FLEXIBLE_DATE_FILTERS).map(Number)],
+        description: "Search around check-in and check-out by ±1, ±2, ±3, ±7, or ±14 days. Requires both dates when greater than 0. Omit or use 0 for exact dates. Check each result's availability and pricing for the matched dates."
       },
       adults: {
         type: "number",
@@ -73,11 +82,36 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       },
       minPrice: {
         type: "number",
-        description: "Minimum price for the stay"
+        description: "Minimum nightly price in the selected currency (Airbnb's nightly-price filter)"
       },
       maxPrice: {
         type: "number",
-        description: "Maximum price for the stay"
+        description: "Maximum nightly price in the selected currency (Airbnb's nightly-price filter)"
+      },
+      currency: {
+        type: "string",
+        pattern: "^[A-Z]{3}$",
+        description: "Requested currency code, e.g. USD, EUR, or GBP. Prices report the currency actually returned by Airbnb; omit to use Airbnb's default."
+      },
+      minBedrooms: {
+        type: "integer",
+        minimum: 0,
+        description: "Minimum number of bedrooms (whole number; omit or use 0 for any)"
+      },
+      minBeds: {
+        type: "integer",
+        minimum: 0,
+        description: "Minimum number of beds, independently of bedrooms or guest count (whole number; omit or use 0 for any)"
+      },
+      minBathrooms: {
+        type: "integer",
+        minimum: 0,
+        description: "Minimum number of bathrooms (whole number; omit or use 0 for any). Fractional minimums are not supported by Airbnb."
+      },
+      amenities: {
+        type: "array",
+        items: { type: "string", enum: Object.keys(AMENITY_IDS) },
+        description: "Required amenities, e.g. ['wifi', 'kitchen', 'free_parking']. Use airbnb_list_amenities for labels and descriptions. All selected amenities are requested together. Omit or use [] for any; duplicates are ignored."
       },
       cursor: {
         type: "string",
@@ -86,7 +120,7 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       propertyType: {
         type: "string",
         enum: ["entire_home", "private_room", "shared_room", "hotel_room"],
-        description: "Filter by property type: 'entire_home' (entire homes/apartments), 'private_room' (private rooms in shared homes), 'shared_room' (shared/dorm-style rooms), 'hotel_room' (hotel rooms)"
+        description: "Filter by room type: 'entire_home' (entire homes/apartments), 'private_room' (private rooms), 'shared_room' (shared/dorm-style rooms), 'hotel_room' (hotel rooms). The parameter name is retained for compatibility; it does not select building types such as house or apartment."
       },
       ignoreRobotsText: {
         type: "boolean",
@@ -99,13 +133,22 @@ const AIRBNB_SEARCH_TOOL: Tool = {
 
 const AIRBNB_LISTING_DETAILS_TOOL: Tool = {
   name: "airbnb_listing_details",
-  description: "Get detailed information about a specific Airbnb listing. Provide direct links to the user",
+  description: "Get public details from an Airbnb listing URL or ID: description, rooms, amenities, host, photos, ratings, location, rules and safety information. Show unavailable amenities and missing information clearly. Price and availability are only known when embedded in the page; URL dates alone do not verify them. Provide a direct listing link.",
   inputSchema: {
     type: "object",
     properties: {
       id: {
         type: "string",
-        description: "The Airbnb listing ID"
+        description: "The Airbnb listing ID (provide id or url)"
+      },
+      url: {
+        type: "string",
+        description: "Full Airbnb listing URL containing /rooms/ID. Dates, guest counts and currency are read from the URL; explicit arguments override them. Short share links are not supported."
+      },
+      currency: {
+        type: "string",
+        pattern: "^[A-Z]{3}$",
+        description: "Requested currency code, for example USD or EUR"
       },
       checkin: {
         type: "string",
@@ -116,19 +159,23 @@ const AIRBNB_LISTING_DETAILS_TOOL: Tool = {
         description: "Check-out date (YYYY-MM-DD)"
       },
       adults: {
-        type: "number",
+        type: "integer",
+        minimum: 1,
         description: "Number of adults"
       },
       children: {
-        type: "number",
+        type: "integer",
+        minimum: 0,
         description: "Number of children"
       },
       infants: {
-        type: "number",
+        type: "integer",
+        minimum: 0,
         description: "Number of infants"
       },
       pets: {
-        type: "number",
+        type: "integer",
+        minimum: 0,
         description: "Number of pets"
       },
       ignoreRobotsText: {
@@ -136,13 +183,20 @@ const AIRBNB_LISTING_DETAILS_TOOL: Tool = {
         description: "Ignore robots.txt rules for this request"
       }
     },
-    required: ["id"]
+    anyOf: [{ required: ["id"] }, { required: ["url"] }]
   }
+};
+
+const AIRBNB_LIST_AMENITIES_TOOL: Tool = {
+  name: "airbnb_list_amenities",
+  description: "List supported amenity search filters with names, labels, and descriptions. Use the names in airbnb_search. This local catalog does not report availability at a location or property; use airbnb_listing_details for a property's amenities.",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false }
 };
 
 const AIRBNB_TOOLS = [
   AIRBNB_SEARCH_TOOL,
   AIRBNB_LISTING_DETAILS_TOOL,
+  AIRBNB_LIST_AMENITIES_TOOL,
 ] as const;
 
 // Utility functions
@@ -287,11 +341,12 @@ async function geocodeLocation(location: string): Promise<{
   return coords;
 }
 
-const PROPERTY_TYPE_IDS: Record<string, string> = {
-  entire_home:  "1",
-  private_room: "2",
-  shared_room:  "3",
-  hotel_room:   "4",
+// Airbnb's room categories are distinct from its numeric building-type IDs.
+const ROOM_TYPES: Record<string, string> = {
+  entire_home: "Entire home/apt",
+  private_room: "Private room",
+  shared_room: "Shared room",
+  hotel_room: "Hotel room",
 };
 
 // Configuration from environment variables (set by DXT host)
@@ -405,16 +460,52 @@ async function handleAirbnbSearch(params: any) {
     placeId,
     checkin,
     checkout,
+    dateFlexibilityDays = 0,
     adults = 1,
     children = 0,
     infants = 0,
     pets = 0,
     minPrice,
     maxPrice,
+    currency,
+    minBedrooms,
+    minBeds,
+    minBathrooms,
+    amenities,
     cursor,
     propertyType,
     ignoreRobotsText = false,
   } = params;
+
+  if (currency !== undefined && (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency))) {
+    throw new McpError(ErrorCode.InvalidParams, "currency must be a three-letter uppercase code, e.g. USD or EUR");
+  }
+  if ((checkin !== undefined || checkout !== undefined) && dateNights(checkin, checkout) === null) {
+    throw new McpError(ErrorCode.InvalidParams, "Provide both checkin and checkout as valid YYYY-MM-DD dates, with checkout after checkin");
+  }
+  if (typeof dateFlexibilityDays !== "number" || !Number.isInteger(dateFlexibilityDays) ||
+      (dateFlexibilityDays !== 0 && !Object.prototype.hasOwnProperty.call(FLEXIBLE_DATE_FILTERS, dateFlexibilityDays))) {
+    throw new McpError(ErrorCode.InvalidParams, "dateFlexibilityDays must be one of: 0, 1, 2, 3, 7, 14");
+  }
+  if (dateFlexibilityDays > 0 && dateNights(checkin, checkout) === null) {
+    throw new McpError(ErrorCode.InvalidParams, "dateFlexibilityDays requires both checkin and checkout");
+  }
+
+  for (const [name, value] of Object.entries({ minBedrooms, minBeds, minBathrooms })) {
+    if (value !== undefined && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)) {
+      throw new McpError(ErrorCode.InvalidParams, `${name} must be a non-negative whole number`);
+    }
+  }
+
+  if (amenities !== undefined && (!Array.isArray(amenities) || amenities.some(
+    (amenity: unknown) => typeof amenity !== "string" || !Object.prototype.hasOwnProperty.call(AMENITY_IDS, amenity)
+  ))) {
+    throw new McpError(ErrorCode.InvalidParams, `amenities must be an array containing only: ${Object.keys(AMENITY_IDS).join(", ")}`);
+  }
+
+  if (propertyType !== undefined && (typeof propertyType !== "string" || !Object.prototype.hasOwnProperty.call(ROOM_TYPES, propertyType))) {
+    throw new McpError(ErrorCode.InvalidParams, `propertyType must be one of: ${Object.keys(ROOM_TYPES).join(", ")}`);
+  }
 
   // Build search URL
   // Airbnb path segments use "--" as the separator (e.g. "Paris--France"),
@@ -444,6 +535,8 @@ async function handleAirbnbSearch(params: any) {
   // Add query parameters
   if (checkin) searchUrl.searchParams.append("checkin", checkin);
   if (checkout) searchUrl.searchParams.append("checkout", checkout);
+  if (dateFlexibilityDays > 0) searchUrl.searchParams.append("flexible_date_search_filter_type", FLEXIBLE_DATE_FILTERS[dateFlexibilityDays]);
+  if (currency !== undefined) searchUrl.searchParams.append("currency", currency);
   
   // Add guests
   const adults_int = parseInt(adults.toString());
@@ -462,10 +555,20 @@ async function handleAirbnbSearch(params: any) {
   // Add price range
   if (minPrice != null) searchUrl.searchParams.append("price_min", minPrice.toString());
   if (maxPrice != null) searchUrl.searchParams.append("price_max", maxPrice.toString());
+  if (minPrice != null || maxPrice != null) searchUrl.searchParams.append("price_filter_input_type", "0");
+
+  // Airbnb applies these minimums before pagination; 0 means no restriction.
+  if (minBedrooms !== undefined) searchUrl.searchParams.append("min_bedrooms", minBedrooms.toString());
+  if (minBeds !== undefined) searchUrl.searchParams.append("min_beds", minBeds.toString());
+  if (minBathrooms !== undefined) searchUrl.searchParams.append("min_bathrooms", minBathrooms.toString());
+
+  for (const amenity of new Set<string>(amenities ?? [])) {
+    searchUrl.searchParams.append("amenities[]", AMENITY_IDS[amenity]);
+  }
   
-  // Add property type filter
-  if (propertyType && PROPERTY_TYPE_IDS[propertyType]) {
-    searchUrl.searchParams.append("l2_property_type_ids[]", PROPERTY_TYPE_IDS[propertyType]);
+  // Keep the public parameter name, but send Airbnb's room-type filter.
+  if (propertyType !== undefined) {
+    searchUrl.searchParams.append("room_types[]", ROOM_TYPES[propertyType]);
   }
 
   // Add cursor for pagination
@@ -560,16 +663,38 @@ async function handleAirbnbSearch(params: any) {
       
       const clientData = JSON.parse(scriptContent);
       const results = clientData.niobeClientData[0][1].data.presentation.staysSearch.results;
+      let resolvedCurrency: string | null = null;
+      try {
+        resolvedCurrency = resolveCurrency(JSON.parse($("#data-injector-instances").text()));
+      } catch {
+        // Missing currency metadata must not turn an ambiguous symbol into USD.
+      }
+      const pricing = results.searchResults.map((result: any) => extractPricing(result, {
+        currency: resolvedCurrency, requestedCurrency: currency, checkin, checkout
+      }));
       cleanObject(results);
       
-      staysSearchResults = {
-        searchResults: results.searchResults
+      const searchResults = results.searchResults
           .map((result: any) => flattenArraysInObject(pickBySchema(result, allowSearchResultSchema)))
-          .map((result: any) => {
+          .map((result: any, index: number) => {
             const id = atob(result.demandStayListing.id).split(":")[1];
-            return {id, url: `${BASE_URL}/rooms/${id}`, ...result }
-          }),
-        paginationInfo: results.paginationInfo
+            const quote = pricing[index];
+            const availability = describeAvailability(quote, { checkin, checkout, dateFlexibilityDays });
+            const listingUrl = new URL(`${BASE_URL}/rooms/${id}`);
+            if (quote.checkin && quote.checkout) {
+              listingUrl.searchParams.set("check_in", quote.checkin);
+              listingUrl.searchParams.set("check_out", quote.checkout);
+            }
+            for (const [name, count] of Object.entries({ adults: adults_int, children: children_int, infants: infants_int, pets: pets_int })) {
+              listingUrl.searchParams.set(name, count.toString());
+            }
+            if (quote.currency) listingUrl.searchParams.set("currency", quote.currency);
+            return {id, url: listingUrl.toString(), ...result, pricing: quote, availability }
+          });
+      staysSearchResults = {
+        ...filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined),
+        paginationInfo: results.paginationInfo,
+        retrievedAt: new Date().toISOString()
       }
       
       log('info', 'Search completed successfully', { 
@@ -632,37 +757,11 @@ async function handleAirbnbSearch(params: any) {
 }
 
 async function handleAirbnbListingDetails(params: any) {
-  const {
-    id,
-    checkin,
-    checkout,
-    adults = 1,
-    children = 0,
-    infants = 0,
-    pets = 0,
-    ignoreRobotsText = false,
-  } = params;
-
-  // Build listing URL
-  const listingUrl = new URL(`${BASE_URL}/rooms/${id}`);
-  
-  // Add query parameters
-  if (checkin) listingUrl.searchParams.append("check_in", checkin);
-  if (checkout) listingUrl.searchParams.append("check_out", checkout);
-  
-  // Add guests
-  const adults_int = parseInt(adults.toString());
-  const children_int = parseInt(children.toString());
-  const infants_int = parseInt(infants.toString());
-  const pets_int = parseInt(pets.toString());
-  
-  const totalGuests = adults_int + children_int;
-  if (totalGuests > 0) {
-    listingUrl.searchParams.append("adults", adults_int.toString());
-    listingUrl.searchParams.append("children", children_int.toString());
-    listingUrl.searchParams.append("infants", infants_int.toString());
-    listingUrl.searchParams.append("pets", pets_int.toString());
-  }
+  let context: ReturnType<typeof normalizeListingInput>;
+  try { context = normalizeListingInput(params); }
+  catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
+  const { id, listingUrl, checkin, checkout } = context;
+  const ignoreRobotsText = params.ignoreRobotsText ?? false;
 
   // Check if path is allowed by robots.txt
   const path = listingUrl.pathname + listingUrl.search;
@@ -720,7 +819,7 @@ async function handleAirbnbListingDetails(params: any) {
   };
 
   try {
-    log('info', 'Fetching listing details', { id, checkin, checkout, adults, children });
+    log('info', 'Fetching listing details', { id, checkin, checkout });
     
     const response = await fetchWithUserAgent(listingUrl.toString());
     const html = await response.text();
@@ -728,6 +827,7 @@ async function handleAirbnbListingDetails(params: any) {
     
     // Always an array. A consumer doing details.find(...) should never meet an object.
     let details: any[] = [];
+    let listing: ReturnType<typeof extractListing> | undefined;
     let scriptContent = '';
     
     try {
@@ -742,7 +842,9 @@ async function handleAirbnbListingDetails(params: any) {
       }
       
       const clientData = JSON.parse(scriptContent);
-      const sections = clientData.niobeClientData[0][1].data.presentation.stayProductDetailPage.sections.sections;
+      const sections = listingSections(clientData);
+      if (!sections.length && !findPdpPresentation(clientData)) throw new Error("No listing details found in page data");
+      listing = extractListing(clientData, html, context);
       sections.forEach((section: any) => cleanObject(section));
       
       let extracted: any[] = sections
@@ -828,6 +930,9 @@ async function handleAirbnbListingDetails(params: any) {
         type: "text",
         text: JSON.stringify({
           listingUrl: listingUrl.toString(),
+          listingId: id,
+          retrievedAt: new Date().toISOString(),
+          listing,
           details: details
         }, null, 2)
       }],
@@ -901,7 +1006,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       throw new McpError(ErrorCode.InvalidParams, "Tool name is required");
     }
     
-    if (!request.params.arguments) {
+    if (!request.params.arguments && request.params.name !== "airbnb_list_amenities") {
       throw new McpError(ErrorCode.InvalidParams, "Tool arguments are required");
     }
     
@@ -911,12 +1016,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     });
     
     // Ensure robots.txt is loaded
-    if (!robotsTxtContent && !IGNORE_ROBOTS_TXT) {
+    if (request.params.name !== "airbnb_list_amenities" && !robotsTxtContent && !IGNORE_ROBOTS_TXT) {
       await fetchRobotsTxt();
     }
 
     let result;
     switch (request.params.name) {
+      case "airbnb_list_amenities": {
+        if (Object.keys(request.params.arguments ?? {}).length > 0) {
+          throw new McpError(ErrorCode.InvalidParams, "airbnb_list_amenities takes no arguments");
+        }
+        result = {
+          content: [{
+            type: "text",
+            text: JSON.stringify({
+              amenities: Object.entries(AMENITIES).map(([name, { label, description }]) => ({ name, label, description })),
+              usage: "Pass amenity names in airbnb_search's amenities array. All selected amenities are requested together. Use airbnb_listing_details to check a property's amenities and access conditions."
+            }, null, 2)
+          }],
+          isError: false
+        };
+        break;
+      }
+
       case "airbnb_search": {
         result = await handleAirbnbSearch(request.params.arguments);
         break;
@@ -969,8 +1091,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function runServer() {
   try {
-    // Initialize robots.txt on startup
-    await fetchRobotsTxt();
+    // Load robots.txt when a network-backed tool is called, so discovery works offline.
     
     const transport = new StdioServerTransport();
     await server.connect(transport);

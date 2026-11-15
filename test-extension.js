@@ -104,7 +104,7 @@ class MCPTester {
       });
       
       // Validate expected tools
-      const expectedTools = ['airbnb_search', 'airbnb_listing_details'];
+      const expectedTools = ['airbnb_search', 'airbnb_listing_details', 'airbnb_list_amenities'];
       const foundTools = tools.map(t => t.name);
       
       for (const expectedTool of expectedTools) {
