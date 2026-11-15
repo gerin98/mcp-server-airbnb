@@ -126,6 +126,18 @@ test('propertyType rejects unsupported room types through MCP', async () => {
   }
 });
 
+test('buildingType is a separate optional enum and validates through MCP', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
+  assert.deepEqual(schema.properties.buildingType.enum, ['house', 'apartment', 'guesthouse', 'hotel', 'cabin', 'villa']);
+  assert.ok(!schema.required.includes('buildingType'));
+  assert.deepEqual(schema.properties.propertyType.enum, ['entire_home', 'private_room', 'shared_room', 'hotel_room']);
+  for (const value of ['entire_home', 'castle', 'House', 1, null, true, [], ['house'], {}, '__proto__']) {
+    await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', buildingType: value } }),
+      error => error.code === -32602 && error.message.includes('buildingType'));
+  }
+});
+
 test('currency validates its input through MCP', async () => {
   const { tools } = await client.listTools();
   const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;

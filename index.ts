@@ -14,6 +14,7 @@ import * as cheerio from "cheerio";
 import { cleanObject, flattenArraysInObject, pickBySchema, diagnoseJsonPath, findPdpPresentation, extractAmenities, extractHighlights, keyAmenityGroups } from "./util.js";
 import robotsParser from "robots-parser";
 import { AMENITIES, AMENITY_IDS } from "./amenities.js";
+import { BUILDING_TYPES, applyBuildingType, validateBuildingType } from "./building-types.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
@@ -140,7 +141,12 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       propertyType: {
         type: "string",
         enum: ["entire_home", "private_room", "shared_room", "hotel_room"],
-        description: "Filter by room type: 'entire_home' (entire homes/apartments), 'private_room' (private rooms), 'shared_room' (shared/dorm-style rooms), 'hotel_room' (hotel rooms). The parameter name is retained for compatibility; it does not select building types such as house or apartment."
+        description: "Filter by room type: 'entire_home' (entire homes/apartments), 'private_room' (private rooms), 'shared_room' (shared/dorm-style rooms), 'hotel_room' (hotel rooms). Use buildingType separately to select houses, apartments, cabins, etc."
+      },
+      buildingType: {
+        type: "string",
+        enum: Object.keys(BUILDING_TYPES),
+        description: "Filter by building type, independently of propertyType (room type). Choose house, apartment, guesthouse, hotel, cabin, or villa. House/apartment/guesthouse are Airbnb's broad groups and can include related types such as condos or guest suites. Omit for any building type."
       },
       ignoreRobotsText: {
         type: "boolean",
@@ -474,7 +480,7 @@ async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
 
 // API handlers
 async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number }): Promise<any> {
-  try { validatePartialOptions(params); }
+  try { validatePartialOptions(params); validateBuildingType(params.buildingType); }
   catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
@@ -592,6 +598,7 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
     if (propertyType !== undefined) {
       searchUrl.searchParams.append("room_types[]", ROOM_TYPES[propertyType]);
     }
+    applyBuildingType(searchUrl, params.buildingType);
 
     // Add cursor for pagination
     if (cursor) {
@@ -618,6 +625,7 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
   }
 
   const allowSearchResultSchema: Record<string, any> = {
+    title: true,
     demandStayListing : {
       id: true,
       description: true,

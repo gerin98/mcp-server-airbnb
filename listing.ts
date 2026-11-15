@@ -82,6 +82,8 @@ const select = (value: any, schema: Record<string, any>) => value ? publicConten
 
 export function extractListing(clientData: any, html: string, context: ReturnType<typeof normalizeListingInput>) {
   const pdp = findPdpPresentation(clientData);
+  const listingNode = (clientData?.niobeClientData ?? []).map((entry: any) => entry?.[1]?.data?.node)
+    .find((node: any) => node?.pdpPresentation && node.pdpPresentation === pdp);
   const sections = listingSections(clientData);
   const section = (id: string) => sections.find(s => s.sectionId === id)?.section;
   const $ = cheerio.load(html);
@@ -115,6 +117,7 @@ export function extractListing(clientData: any, html: string, context: ReturnTyp
     overview: select(pdp?.overview ?? section("OVERVIEW_DEFAULT_V2"), { title: true, items: true, detailItems: true }),
     personCapacity: pdp?.personCapacity ?? book?.maxGuestCapacity ?? null,
     propertyType: pdp?.sharingConfig?.propertyType ?? null,
+    buildingType: typeof listingNode?.propertyType === "string" ? listingNode.propertyType.toLowerCase() : null,
     highlights: select(pdp, { highlights: { title: true, subtitle: true } })?.highlights ?? null,
     amenities,
     sleepingArrangements: select(pdp?.sleepingArrangements, { name: true, stops: { name: true, description: true } }),

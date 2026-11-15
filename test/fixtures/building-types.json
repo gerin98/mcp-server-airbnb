@@ -1,0 +1,163 @@
+{
+  "source": "Airbnb public search filter controls and responses, captured 2026-11-15. Only building-type controls, applied filter values and sample result titles retained.",
+  "controls": [
+    {
+      "label": "House",
+      "searchParams": [
+        {
+          "__typename": "ExploreSearchParam",
+          "deleteBool": null,
+          "inArray": true,
+          "key": "l2_property_type_ids",
+          "value": {
+            "__typename": "LongValue",
+            "longValue": "1"
+          },
+          "valueType": "array"
+        }
+      ],
+      "resetKeys": null
+    },
+    {
+      "label": "Apartment",
+      "searchParams": [
+        {
+          "__typename": "ExploreSearchParam",
+          "deleteBool": null,
+          "inArray": true,
+          "key": "l2_property_type_ids",
+          "value": {
+            "__typename": "LongValue",
+            "longValue": "3"
+          },
+          "valueType": "array"
+        }
+      ],
+      "resetKeys": null
+    },
+    {
+      "label": "Guesthouse",
+      "searchParams": [
+        {
+          "__typename": "ExploreSearchParam",
+          "deleteBool": null,
+          "inArray": true,
+          "key": "l2_property_type_ids",
+          "value": {
+            "__typename": "LongValue",
+            "longValue": "2"
+          },
+          "valueType": "array"
+        }
+      ],
+      "resetKeys": null
+    },
+    {
+      "label": "Hotel",
+      "searchParams": [
+        {
+          "__typename": "ExploreSearchParam",
+          "deleteBool": null,
+          "inArray": false,
+          "key": "kg_and_tags",
+          "value": {
+            "__typename": "StringValue",
+            "stringValue": "Tag:9613"
+          },
+          "valueType": "array"
+        }
+      ],
+      "resetKeys": [
+        "room_types"
+      ]
+    }
+  ],
+  "searches": [
+    {
+      "buildingType": "apartment",
+      "appliedFilters": [
+        {
+          "filterName": "l2PropertyTypeIds",
+          "filterValues": [
+            "3"
+          ]
+        }
+      ],
+      "sampleTitles": [
+        "Apartment in Boston",
+        "Apartment in Boston",
+        "Apartment in Boston"
+      ]
+    },
+    {
+      "buildingType": "guesthouse",
+      "appliedFilters": [
+        {
+          "filterName": "l2PropertyTypeIds",
+          "filterValues": [
+            "2"
+          ]
+        }
+      ],
+      "sampleTitles": [
+        "Guesthouse in Cambridge",
+        "Guest suite in Somerville",
+        "Guest suite in Chelsea"
+      ]
+    },
+    {
+      "buildingType": "hotel",
+      "appliedFilters": [
+        {
+          "filterName": "kgAndTags",
+          "filterValues": [
+            "Tag:9613"
+          ]
+        },
+        {
+          "filterName": "roomTypes",
+          "filterValues": [
+            "Hotel room"
+          ]
+        }
+      ],
+      "sampleTitles": [
+        "The Dagny",
+        "Hilton Boston Back Bay",
+        "Hotel Veritas"
+      ]
+    },
+    {
+      "buildingType": "cabin",
+      "appliedFilters": [
+        {
+          "filterName": "propertyTypeId",
+          "filterValues": [
+            "4"
+          ]
+        }
+      ],
+      "sampleTitles": [
+        "Cabin in Rhododendron",
+        "Cabin in Mount Hood Village",
+        "Cabin in Mount Hood Village"
+      ]
+    },
+    {
+      "buildingType": "villa",
+      "appliedFilters": [
+        {
+          "filterName": "propertyTypeId",
+          "filterValues": [
+            "11"
+          ]
+        }
+      ],
+      "sampleTitles": [
+        "Villa in Canggu",
+        "Villa in Denpasar Timur",
+        "Villa in Tampaksiring"
+      ]
+    }
+  ]
+}

@@ -35,6 +35,7 @@ test('live listing URL returns useful public details over MCP', { timeout: 45000
     assert.equal(new URL(data.listingUrl).pathname, `/rooms/${id}`);
     assert.ok(data.listing.title?.trim(), 'Missing listing title');
     assert.ok(data.listing.description?.trim(), 'Missing listing description');
+    assert.ok(typeof data.listing.buildingType === 'string' && data.listing.buildingType.length > 0, 'Missing building taxonomy');
     assert.ok(data.listing.amenities?.some(group => group.amenities?.length > 0), 'Missing amenities');
     assert.ok(data.listing.photos?.some(photo => photo.url?.startsWith('https://')), 'Missing photos');
     assert.equal(data.listing.coverage.source, 'public_listing_page');

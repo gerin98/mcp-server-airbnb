@@ -195,15 +195,46 @@ Search for Airbnb listings with comprehensive filtering options.
 - `amenities` (optional): Array of required amenity names (see below). All selected amenities are requested together. Omit or use `[]` for unrestricted searches. Duplicates are ignored; unknown names are rejected.
 - `cursor` (optional): Pagination cursor for browsing results
 - `propertyType` (optional): Filter by room type — `entire_home`, `private_room`, `shared_room`, or `hotel_room`. The parameter name is retained for compatibility; it does not filter building types such as house or apartment. Omit for any room type; unsupported values are rejected.
+- `buildingType` (optional): Choose one of `house`, `apartment`, `guesthouse`, `hotel`, `cabin`, or `villa`. This is independent of the room-type filter; omit for any building type.
 - `ignoreRobotsText` (optional): Override robots.txt for this request
 
 **Returns:**
 - Search results with property details, pricing, and direct links
+- Airbnb's `title` for each result, such as “Cabin in Rhododendron” (some hotel results use the hotel name)
 - Pagination information for browsing additional results
 - Search URL for reference
 - Retrieval timestamp (`retrievedAt`) and structured `pricing` for each listing
 - `availability` describing how each result's quoted dates compare with your request
 - `availabilityFilter.applied`, `availabilityFilter.excludedResults`, and `availabilityFilter.partialStayResults`, reporting date filtering and how many results are excluded or partial stays
+
+Building types can be combined with room types, dates, guests, amenities, price
+limits and partial-stay discovery. For example:
+
+```json
+{
+  "location": "Rhododendron, OR",
+  "buildingType": "cabin",
+  "propertyType": "entire_home",
+  "adults": 4,
+  "minBedrooms": 2,
+  "amenities": ["wifi", "hot_tub"]
+}
+```
+
+| Building type | Scope |
+| --- | --- |
+| `house` | Airbnb's broad house group, including related house-style stays |
+| `apartment` | Airbnb's apartment group, which can include condos |
+| `guesthouse` | Airbnb's guesthouse group, including guest suites |
+| `hotel` | Airbnb's hotel filter; room type remains a separate choice |
+| `cabin` | Cabins specifically |
+| `villa` | Villas specifically |
+
+The server uses the current Airbnb parameter for each filter: broad groups,
+specific property IDs, or the hotel tag. These are separate from `room_types[]`;
+no existing room selection is cleared. Unsupported names and arrays are rejected
+instead of silently returning an unrestricted search. Extra partial-stay queries
+reuse the same building filter.
 
 To search for your stay, supply `checkin` and `checkout`. Omit
 `dateFlexibilityDays` (or use `0`) to request exact dates from Airbnb. Check-in is
@@ -395,6 +426,10 @@ Explicit arguments override those URL values. Tracking parameters are discarded.
   listing ratings and category scores, photos, house rules, safety information,
   accessibility features, guest requirements and location. Location retains
   `isExactLocation` when supplied; approximate coordinates are not an exact address.
+- `listing.buildingType`: Airbnb's listing taxonomy as a lowercase string, such
+  as `house`, `apartment`, or `cabin`, when present. This is distinct from the
+  existing `listing.propertyType` room-type label, such as “Entire home”. Missing
+  taxonomy remains null; it is not inferred from the listing title or selected filter.
 - `listing.booking`: when dates are supplied, a separate live quote lookup for
   that listing, exact date range, and all guest counts. It returns the availability
   result, pricing, any cancellation summary, and the time checked. Without dates,
@@ -514,6 +549,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-listing.js` — listing URL validation, page extraction fixtures and MCP validation; optional broader live listing checks
 - `test-booking.js` — dated quote fixtures, exact totals, cancellation summaries, request context, date matching, robots rules and failure handling
 - `test-partial-stays.js` — bounded date-window discovery, filter preservation, original-date labels, deduplication, partial failures and coverage; optional live toggle check
+- `test-building-types.js` — current Airbnb filter fixtures, room/building separation, partial-stay filter propagation and optional live checks for all six building types
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -544,6 +580,8 @@ npm run test:availability
 AIRBNB_LIVE_TESTS=true npm run test:filters
 # Verify the partial-stay toggle with one normal search and three extra windows:
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live partial" test-partial-stays.js
+# Verify building types and room types together against Airbnb:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live building" test-building-types.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters
