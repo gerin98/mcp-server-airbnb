@@ -1,4 +1,5 @@
 import { combineRatingReports, RatingFilterReport } from "./ratings.js";
+import { combineTotalPriceReports, TotalPriceFilterReport } from "./total-price.js";
 
 export const DEFAULT_MAX_PAGES = 3;
 export const MAX_PAGES = 5;
@@ -15,7 +16,7 @@ export function validatePaginationOptions(params: Record<string, any>) {
   if (params.cursor !== undefined && (typeof params.cursor !== "string" || !params.cursor.trim())) throw new Error("cursor must be a nonempty string");
 }
 
-type Page = { searchResults: any[]; paginationInfo?: any; ratingFilter?: RatingFilterReport; availabilityFilter?: any; retrievedAt?: string };
+type Page = { searchResults: any[]; paginationInfo?: any; ratingFilter?: RatingFilterReport; totalPriceFilter?: TotalPriceFilterReport; availabilityFilter?: any; retrievedAt?: string };
 
 // Use only provider-issued cursors. Never infer offsets from the result count:
 // local filters can remove every result while later pages still have matches.
@@ -62,6 +63,7 @@ export async function paginateSearch(
     pages.push({ cursor, status: "completed", returnedResults: current.searchResults.length,
       addedResults: searchResults.length - before, retrievedAt: current.retrievedAt ?? null,
       paginationInfo: current.paginationInfo ?? null, ratingFilter: current.ratingFilter,
+      totalPriceFilter: current.totalPriceFilter,
       availabilityFilter: current.availabilityFilter });
     const next = continuation(current, cursor);
     nextCursor = next.cursor;
@@ -86,10 +88,12 @@ export async function paginateSearch(
     }
   }
   const ratingReports = successful.flatMap(page => page.ratingFilter ? [page.ratingFilter] : []);
+  const totalPriceReports = successful.flatMap(page => page.totalPriceFilter ? [page.totalPriceFilter] : []);
   return {
     ...primary, searchResults,
     paginationInfo: current.paginationInfo,
     ...(ratingReports.length ? { ratingFilter: combineRatingReports(ratingReports) } : {}),
+    ...(totalPriceReports.length ? { totalPriceFilter: combineTotalPriceReports(totalPriceReports) } : {}),
     availabilityFilter: {
       ...primary.availabilityFilter,
       excludedResults: successful.reduce((total, page) => total + (page.availabilityFilter?.excludedResults ?? 0), 0),

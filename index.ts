@@ -18,6 +18,7 @@ import { BUILDING_TYPES, applyBuildingType, validateBuildingType } from "./build
 import { extractRating, filterByRating, validateRatingOptions } from "./ratings.js";
 import { paginateSearch, validatePaginationOptions, MAX_PAGES } from "./pagination.js";
 import { sortSearchResults, validateSortOptions, SORT_FIELDS } from "./sorting.js";
+import { filterByTotalPrice, validateTotalPriceOptions } from "./total-price.js";
 import { dateNights, extractPricing, resolveCurrency } from "./pricing.js";
 import { describeAvailability, filterByAvailability, FLEXIBLE_DATE_FILTERS } from "./availability.js";
 import { normalizeListingInput, listingSections, extractListing } from "./listing.js";
@@ -111,6 +112,10 @@ const AIRBNB_SEARCH_TOOL: Tool = {
       maxPrice: {
         type: "number",
         description: "Maximum nightly price in the selected currency (Airbnb's nightly-price filter)"
+      },
+      maxTotalPrice: {
+        type: "number", minimum: 0, maximum: Number.MAX_SAFE_INTEGER,
+        description: "Inclusive maximum quoted stay total, e.g. 1500. Requires currency. Applied locally before pagination targets and sorting, including partial stays (whose totals cover only their quoted dates). Unknown totals/currencies, currency mismatches and unknown/inconsistent quote dates are excluded. Taxes/fees may be excluded or unknown; inspect pricing. Zero means a zero budget; omit for no cap."
       },
       currency: {
         type: "string",
@@ -510,7 +515,7 @@ async function fetchHtmlWithUserAgent(url: string, timeout: number = 30000) {
 
 // API handlers
 async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs: number; includePartialStays?: boolean }): Promise<any> {
-  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); validatePaginationOptions(params); validateSortOptions(params); }
+  try { validatePartialOptions(params); validateBuildingType(params.buildingType); validateRatingOptions(params); validatePaginationOptions(params); validateSortOptions(params); validateTotalPriceOptions(params); }
   catch (error) { throw new McpError(ErrorCode.InvalidParams, error instanceof Error ? error.message : String(error)); }
   const {
     location,
@@ -756,12 +761,14 @@ async function handleAirbnbSearch(params: any, prepared?: { url: URL; timeoutMs:
           });
       const available = filterByAvailability(searchResults, checkin !== undefined && checkout !== undefined, params.discoverPartialStays === true || prepared?.includePartialStays === true);
       const rated = filterByRating(available.searchResults as any[], params);
+      const budgeted = filterByTotalPrice(rated.searchResults, params);
       staysSearchResults = {
         ...available,
         ...rated,
+        ...budgeted,
         availabilityFilter: {
           ...available.availabilityFilter,
-          partialStayResults: rated.searchResults.filter((row: any) => row.availability.matchType === "partial_stay").length,
+          partialStayResults: budgeted.searchResults.filter((row: any) => row.availability.matchType === "partial_stay").length,
         },
         paginationInfo: results.paginationInfo,
         retrievedAt: new Date().toISOString()

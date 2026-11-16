@@ -188,6 +188,7 @@ Search for Airbnb listings with comprehensive filtering options.
 - `pets` (optional): Number of pets (default: 0)
 - `minPrice` (optional): Minimum nightly price in the selected currency; uses Airbnb's nightly-price filter
 - `maxPrice` (optional): Maximum nightly price in the selected currency; uses Airbnb's nightly-price filter
+- `maxTotalPrice` (optional): Inclusive maximum quoted stay total. Requires `currency`; accepts a nonnegative number. Zero means a zero-dollar (or selected-currency) budget; omit for no cap. Applied locally before pagination counts matches.
 - `currency` (optional): Requested three-letter uppercase currency code, such as `USD`, `EUR`, or `GBP`. Omit to use Airbnb's default. Output reports the actual resolved currency, including any mismatch with the request.
 - `minBedrooms` (optional): Minimum number of bedrooms; a non-negative whole number. Omit or use `0` for any.
 - `minBeds` (optional): Minimum number of beds, independent of bedrooms and guest count; a non-negative whole number. Omit or use `0` for any.
@@ -214,6 +215,7 @@ Search for Airbnb listings with comprehensive filtering options.
 - `availability` describing how each result's quoted dates compare with your request
 - `availabilityFilter.applied`, `availabilityFilter.excludedResults`, and `availabilityFilter.partialStayResults`, reporting date filtering and how many results are excluded or partial stays
 - `ratingFilter`, reporting the thresholds, examined/excluded row counts, missing-value exclusions and which fetched pages were filtered
+- `totalPriceFilter`, reporting the quoted-total cap, currency and exclusions for unknown totals, unknown/other currencies, inconsistent or unknown quote dates, and over-budget quotes
 - `sorting`, reporting the selected order, fetched-result scope, price comparison groups, and the number of results with missing or unusable sort values
 
 For listings rated at least 4.5 stars with at least 10 reviews:
@@ -244,6 +246,50 @@ extra search. The top-level `ratingFilter` aggregates examined/excluded rows
 across all successful pages before deduplication; individual window reports
 also retain their own counts. Missing-rating and missing-count exclusions may
 overlap and should not be added together.
+
+To find quotes at or below $1,500 for the requested stay:
+
+```json
+{
+  "location": "Boston, MA",
+  "checkin": "2027-01-15",
+  "checkout": "2027-01-19",
+  "currency": "USD",
+  "maxTotalPrice": 1500,
+  "targetResults": 30,
+  "maxPages": 3,
+  "sortBy": "total_price"
+}
+```
+
+`maxTotalPrice` compares `pricing.stayTotal` with the cap, inclusively, in the
+explicitly requested currency. It does not convert currencies, infer a total
+from nightly rates, or change the native nightly `minPrice`/`maxPrice` filters;
+those can be combined with the total cap. Unknown or invalid totals, unknown
+currencies, currency mismatches and quotes without known dates consistent with
+their night count are excluded when the cap is active. Without requested dates,
+only quotes with usable Airbnb-suggested dates can qualify.
+
+The cap applies locally after date and rating filters, before pagination counts
+qualifying matches, deduplication, partial-stay limits and sorting. It is retained
+on every extra page and shorter-stay search. Empty filtered pages keep their
+cursors, and automatic pagination continues within its limits. Repeat
+`maxTotalPrice` and `currency` when continuing manually; the Airbnb `searchUrl`
+does not encode this local filter.
+
+For partial stays, the cap covers only the quoted dates shown in the result's
+availability label. Passing this filter does not imply the whole requested trip
+is covered within budget. Search totals may be approximate, and taxes or fees
+may be excluded or unknown: `pricing.stayTotalIsApproximate`, `taxesIncluded`,
+`feesIncluded` and the price breakdown remain unchanged. This is a filter on
+the returned quote, not a guarantee of the final checkout amount.
+
+`totalPriceFilter` counts rows after date/rating filtering and before
+deduplication. `unknownTotalExcluded`, `unknownCurrencyExcluded`,
+`currencyMismatchExcluded`, `unverifiedDatesExcluded` and `overBudgetExcluded`
+are mutually exclusive, evaluated in that order. Their sum equals
+`excludedResults`. Top-level counts aggregate successful main and shorter-stay
+pages; individual pagination/window reports retain their own counts.
 
 To seek 30 qualifying results across at most three pages:
 
@@ -674,6 +720,7 @@ The test suites cover fixtures and the built server over stdio:
 - `test-ratings.js` — numeric rating extraction, exact review counts, independent/inclusive thresholds, unknown values, partial-stay filtering and pagination; optional live checks
 - `test-pagination.js` — automatic pagination, bounded requests, deduplication, filter preservation, cursor continuation, empty pages, partial failures and interaction with shorter stays; optional live checks
 - `test-sorting.js` — sort directions, stable ties, missing values, price/date/currency groups, combined pagination and partial stays; optional live checks
+- `test-total-price.js` — inclusive quoted-total budgets, currency/date validation, unknown prices, tax/fee preservation, pagination targets and partial-stay reports; optional live checks
 - `test-live.js` — one dated listing URL smoke test over MCP, run by `npm run test:live`
 - `test-extension.js` — MCP handshake, tool listing, a search, listing details, and the geocoding paths (Photon, Nominatim fallback)
 - `test-amenities.js` — amenity extraction across several live listings, checking that amenities Airbnb strikes through never appear as ones the listing offers
@@ -712,6 +759,8 @@ AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live rating" test-ratin
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live automatic" test-pagination.js
 # Verify sorting across fetched pages and shorter-stay searches:
 AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live sorting" test-sorting.js
+# Verify total budgets across pagination and partial-stay discovery:
+AIRBNB_LIVE_TESTS=true node --test --test-name-pattern="^live total budget" test-total-price.js
 ```
 
 The live filter tests use the robots.txt testing override and check room filters

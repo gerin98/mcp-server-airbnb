@@ -170,6 +170,16 @@ test('sorting schema and validation are exposed through MCP before searching', a
   }
 });
 
+test('total budget validates its cap and required currency through MCP', async () => {
+  const { tools } = await client.listTools();
+  const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
+  assert.equal(schema.properties.maxTotalPrice.type, 'number');
+  assert.equal(schema.properties.maxTotalPrice.minimum, 0);
+  for (const args of [{ maxTotalPrice: 1500 }, { maxTotalPrice: -1, currency: 'USD' }, { maxTotalPrice: '1500', currency: 'USD' }, { maxTotalPrice: null, currency: 'USD' }, { maxTotalPrice: 0, currency: 'usd' }]) {
+    await assert.rejects(client.callTool({ name: 'airbnb_search', arguments: { location: 'Boston, MA', ...args } }), error => error.code === -32602);
+  }
+});
+
 test('currency validates its input through MCP', async () => {
   const { tools } = await client.listTools();
   const schema = tools.find(tool => tool.name === 'airbnb_search').inputSchema;
